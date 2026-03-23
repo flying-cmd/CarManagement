@@ -15,7 +15,9 @@ public class SqliteConnectionFactory
         var configuredPath = options.Value.FilePath;
 
         // Build the absolute path to the db file
-        DatabasePath = Path.IsPathRooted(configuredPath) ? configuredPath : Path.Combine(environment.ContentRootPath, configuredPath);
+        var parentFolder = Directory.GetParent(environment.ContentRootPath)?.FullName ?? throw new InvalidOperationException("Unable to get parent folder.");
+
+        DatabasePath = Path.IsPathRooted(configuredPath) ? configuredPath : Path.Combine(parentFolder, configuredPath);
 
         _connectionString = new SqliteConnectionStringBuilder
         {
