@@ -79,12 +79,12 @@ public class DatabaseInitializer
     private async Task SeedDealerAsync(System.Data.IDbConnection connection, string name, string email, string password, CancellationToken cancellationToken = default)
     {
         // Check if the dealer already exists
-        var exists = await connection.QuerySingleOrDefaultAsync<Dealer>(
+        var exists = await connection.QuerySingleOrDefaultAsync<int?>(
             new CommandDefinition(
-                "SELECT * FROM Dealers WHERE Email = @email",
+                "SELECT 1 FROM Dealers WHERE Email = @email LIMIT 1",
                 new { email }, cancellationToken: cancellationToken));
 
-        if (exists is not null)
+        if (exists.HasValue)
         {
             return;
         }
