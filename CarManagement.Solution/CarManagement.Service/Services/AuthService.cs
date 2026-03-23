@@ -30,9 +30,9 @@ public class AuthService : IAuthService
     /// </summary>
     /// <param name="req">The login request <see cref="LoginRequestDto"/>.</param>
     /// <param name="ct">The cancellation token.</param>
-    /// <returns>Returns <see cref="LoginResponseDto"/> if successful.</returns>
+    /// <returns>Returns <see cref="AuthResponseDto"/> if successful.</returns>
     /// <exception cref="ApiException.Unauthorized(string)">Thrown if invalid email or password.</exception>
-    public async Task<LoginResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct)
+    public async Task<AuthResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct)
     {
         var dealer = await _dealerRepository.GetDealerByEmailAsync(req.Email, ct);
 
@@ -54,8 +54,9 @@ public class AuthService : IAuthService
                 o.User["UserId"] = dealer.Id.ToString();
             });
 
-        return new LoginResponseDto 
-        { 
+        return new AuthResponseDto 
+        {
+            Name = dealer.Name,
             Email = dealer.Email, 
             AccessToken = jwtToken, 
             ExpiresAtUtc = expiresAt 

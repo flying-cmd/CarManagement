@@ -4,5 +4,5 @@ namespace CarManagement.Service.Interfaces;
 
 public interface IAuthService
 {
-    Task<LoginResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct);
+    Task<AuthResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct);
 }
