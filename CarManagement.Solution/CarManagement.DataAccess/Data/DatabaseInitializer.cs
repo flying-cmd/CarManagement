@@ -34,7 +34,7 @@ public class DatabaseInitializer
 
         var schemaSql = """
             CREATE TABLE IF NOT EXISTS Dealers (
-                Id TEXT PRIMARY KEY,
+                Id TEXT PRIMARY KEY COLLATE NOCASE,
                 Name TEXT NOT NULL,
                 Email TEXT NOT NULL COLLATE NOCASE UNIQUE,
                 PasswordHash TEXT NOT NULL,
@@ -42,7 +42,7 @@ public class DatabaseInitializer
             );
 
             CREATE TABLE IF NOT EXISTS Cars (
-                Id TEXT PRIMARY KEY,
+                Id TEXT PRIMARY KEY COLLATE NOCASE,
                 DealerId TEXT NOT NULL,
                 Make TEXT NOT NULL COLLATE NOCASE,
                 Model TEXT NOT NULL COLLATE NOCASE,
@@ -94,6 +94,6 @@ public class DatabaseInitializer
 
         await connection.ExecuteAsync(new CommandDefinition(
             "INSERT INTO Dealers (Id, Name, Email, PasswordHash, CreatedAt) VALUES (@Id, @Name, @Email, @PasswordHash, @CreatedAt)",
-            new { Id = dealer.Id, Name = dealer.Name, Email = dealer.Email, PasswordHash = dealer.PasswordHash, CreatedAt = dealer.CreatedAt }, cancellationToken: cancellationToken));
+            new { Id = dealer.Id.ToString(), Name = dealer.Name, Email = dealer.Email, PasswordHash = dealer.PasswordHash, CreatedAt = dealer.CreatedAt }, cancellationToken: cancellationToken));
     }
 }
