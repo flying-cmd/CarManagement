@@ -1,4 +1,5 @@
-﻿using CarManagement.Models.Entities;
+﻿using CarManagement.Common.Helpers;
+using CarManagement.Models.Entities;
 using CarManagement.Service.DTOs;
 using CarManagement.Service.Interfaces;
 using CarManagementApi.Repository.Interfaces;
@@ -24,13 +25,20 @@ public class AuthService : IAuthService
         _configuration = configuration;
     }
 
+    /// <summary>
+    /// Login.
+    /// </summary>
+    /// <param name="req">The login request <see cref="LoginRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns <see cref="LoginResponseDto"/> if successful.</returns>
+    /// <exception cref="ApiException.Unauthorized(string)">Thrown if invalid email or password.</exception>
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct)
     {
         var dealer = await _dealerRepository.GetDealerByEmailAsync(req.Email, ct);
 
         if (dealer is null || _passwordHasher.VerifyHashedPassword(dealer, dealer.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
         {
-            throw new UnauthorizedAccessException("Invalid email or password");
+            throw ApiException.Unauthorized("Invalid email or password");
         }
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpirationInMinutes"));

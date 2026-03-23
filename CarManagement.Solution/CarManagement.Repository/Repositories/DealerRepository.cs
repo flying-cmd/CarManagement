@@ -42,6 +42,9 @@ public class DealerRepository : IDealerRepository
             DateTimeOffset.Parse(row.CreatedAt));
     }
 
+    /// <summary>
+    /// Dealer row. Returns by the SQL query.
+    /// </summary>
     private sealed class DealerRow
     {
         public string Id { get; set; } = string.Empty;
