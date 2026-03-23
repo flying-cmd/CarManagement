@@ -17,32 +17,25 @@ public class ApiException : Exception
         StatusCode = statusCode;
         Errors = errors ?? new Dictionary<string, string[]>();
     }
-}
 
-public sealed class UnauthorizedException : ApiException
-{
-    public UnauthorizedException(string message = "Unauthorized") : base(message, StatusCodes.Status401Unauthorized)
-    {
-    }
-}
+    public static ApiException BadRequest(
+        string message = "Bad request.",
+        IDictionary<string, string[]>? errors = null)
+        => new(message, StatusCodes.Status400BadRequest, errors);
 
-public sealed class ForbiddenException : ApiException
-{
-    public ForbiddenException(string message = "Forbidden.") : base(message, StatusCodes.Status403Forbidden)
-    {
-    }
-}
+    public static ApiException Unauthorized(
+        string message = "Unauthorized.")
+        => new(message, StatusCodes.Status401Unauthorized);
 
-public sealed class NotFoundException : ApiException
-{
-    public NotFoundException(string message = "Resource not found.") : base(message, StatusCodes.Status404NotFound)
-    {
-    }
-}
+    public static ApiException Forbidden(
+        string message = "Forbidden.")
+        => new(message, StatusCodes.Status403Forbidden);
 
-public sealed class ConflictException : ApiException
-{
-    public ConflictException(string message = "A conflict occurred.") : base(message, StatusCodes.Status409Conflict)
-    {
-    }
+    public static ApiException NotFound(
+        string message = "Resource not found.")
+        => new(message, StatusCodes.Status404NotFound);
+
+    public static ApiException Conflict(
+        string message = "A conflict occurred.")
+        => new(message, StatusCodes.Status409Conflict);
 }

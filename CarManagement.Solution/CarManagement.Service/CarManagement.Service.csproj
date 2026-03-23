@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FastEndpoints.Security" Version="7.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CarManagement.Common\CarManagement.Common.csproj" />
     <ProjectReference Include="..\CarManagement.Repository\CarManagement.Repository.csproj" />
   </ItemGroup>
 
