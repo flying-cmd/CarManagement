@@ -33,8 +33,8 @@ public class Car
             throw new ArgumentOutOfRangeException(nameof(price), "Price cannot be negative.");
         Price = price;
 
-        if (stockLevel <= 0)
-            throw new ArgumentOutOfRangeException(nameof(stockLevel), "Stock level cannot be less than or equal to zero.");
+        if (stockLevel < 0)
+            throw new ArgumentOutOfRangeException(nameof(stockLevel), "Stock level cannot be negative.");
         StockLevel = stockLevel;
 
         CreatedAt = DateTimeOffset.UtcNow;
