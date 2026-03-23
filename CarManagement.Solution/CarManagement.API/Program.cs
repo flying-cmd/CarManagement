@@ -1,8 +1,11 @@
 using CarManagement.API.Middlewares;
+using CarManagement.Common.Constants;
 using CarManagement.DataAccess.Data;
 using CarManagement.Models.Entities;
+using CarManagement.Repository.Interfaces;
 using CarManagement.Repository.Repositories;
 using CarManagement.Service.Interfaces;
+using CarManagement.Service.Mappers;
 using CarManagement.Service.Services;
 using CarManagementApi.Repository.Interfaces;
 using FastEndpoints;
@@ -21,14 +24,25 @@ builder.Services.AddSingleton<DatabaseInitializer>();
 builder.Services.AddSingleton<IPasswordHasher<Dealer>, PasswordHasher<Dealer>>();
 
 //Jwt
-builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = builder.Configuration["Jwt:SigningKey"])
-    .AddAuthorization();
+builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = builder.Configuration["Jwt:SigningKey"]);
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("DealerOnly", x => x.RequireRole(RoleNames.DEALER));
+});
+
+// UserContext
+builder.Services.AddScoped<IUserContext, UserContext>();
+
+// Mapper
+builder.Services.AddSingleton<CarMapper>();
 
 // Repositories
 builder.Services.AddScoped<IDealerRepository, DealerRepository>();
+builder.Services.AddScoped<ICarRepository, CarRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICarService, CarService>();
 
 builder.Services.AddFastEndpoints();
 

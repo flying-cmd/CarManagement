@@ -71,6 +71,34 @@ public class DealerRepository : IDealerRepository
     }
 
     /// <summary>
+    /// Get dealer by id.
+    /// </summary>
+    /// <param name="dealerId">The id of the dealer.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns the dealer if found, otherwise null.</returns>
+    public async Task<Dealer?> GetDealerByIdAsync(Guid dealerId, CancellationToken ct)
+    {
+        const string sql = "SELECT * FROM Dealers WHERE Id = @Id";
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var row = await connection.QuerySingleOrDefaultAsync<DealerRow>(
+            new CommandDefinition(sql, new { Id = dealerId.ToString() }, cancellationToken: ct));
+
+        if (row is null)
+        {
+            return null;
+        }
+
+        return Dealer.Rehydrate(
+            Guid.Parse(row.Id),
+            row.Name,
+            row.Email,
+            row.PasswordHash,
+            DateTimeOffset.Parse(row.CreatedAt));
+    }
+
+    /// <summary>
     /// Dealer row. Returns by the SQL query.
     /// </summary>
     private sealed class DealerRow

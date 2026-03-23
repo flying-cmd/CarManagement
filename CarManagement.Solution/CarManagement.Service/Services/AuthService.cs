@@ -46,7 +46,7 @@ public class AuthService : IAuthService
             throw ApiException.Unauthorized("Invalid email or password");
         }
 
-        var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpirationInMinutes"));
+        var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:DurationInMinutes"));
 
         var jwtToken = JwtBearer.CreateToken(
             o =>
@@ -93,7 +93,7 @@ public class AuthService : IAuthService
         await _dealerRepository.AddDealerAsync(dealer, ct);
 
         // Create JWT token
-        var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:ExpirationInMinutes"));
+        var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:DurationInMinutes"));
 
         var jwtToken = JwtBearer.CreateToken(
             o =>
