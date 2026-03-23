@@ -1,23 +1,9 @@
-var builder = WebApplication.CreateBuilder(args);
+global using FastEndpoints;
+global using FluentValidation;
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+var builder = WebApplication.CreateBuilder();
+builder.Services.AddFastEndpoints();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
-
+app.UseFastEndpoints();
 app.Run();
