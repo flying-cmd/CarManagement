@@ -47,7 +47,7 @@ public class DatabaseInitializer
                 Make TEXT NOT NULL COLLATE NOCASE,
                 Model TEXT NOT NULL COLLATE NOCASE,
                 Year INTEGER NOT NULL,
-                Color TEXT NOT NULL COLLATE NOCASE,
+                Colour TEXT NOT NULL COLLATE NOCASE,
                 Price REAL NOT NULL CHECK (Price >= 0),
                 StockLevel INTEGER NOT NULL CHECK (StockLevel >= 0),
                 CreatedAt TEXT NOT NULL,
