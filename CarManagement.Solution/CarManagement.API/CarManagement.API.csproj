@@ -12,10 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Middlewares\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <ProjectReference Include="..\CarManagement.Common\CarManagement.Common.csproj" />
     <ProjectReference Include="..\CarManagement.Service\CarManagement.Service.csproj" />
   </ItemGroup>
 
