@@ -15,6 +15,34 @@ public class DealerRepository : IDealerRepository
     }
 
     /// <summary>
+    /// Add new dealer.
+    /// </summary>
+    /// <param name="dealer">The dealer entity.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns a task that represents the asynchronous operation.</returns>
+    public async Task AddDealerAsync(Dealer dealer, CancellationToken ct)
+    {
+        const string sql = """
+            INSERT INTO Dealers (Id, Name, Email, PasswordHash, CreatedAt) 
+            VALUES (@Id, @Name, @Email, @PasswordHash, @CreatedAt)
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+        
+        await connection.ExecuteAsync(new CommandDefinition(
+            sql, 
+            new
+            {
+                Id = dealer.Id.ToString(),
+                Name = dealer.Name,
+                Email = dealer.Email,
+                PasswordHash = dealer.PasswordHash,
+                CreatedAt = dealer.CreatedAt.ToString("O")
+            },
+            cancellationToken: ct));
+    }
+
+    /// <summary>
     /// Get dealer by email.
     /// </summary>
     /// <param name="email">The email of the dealer.</param>
