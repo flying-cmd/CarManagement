@@ -194,6 +194,32 @@ public class CarRepository : ICarRepository
     }
 
     /// <summary>
+    /// Update car stock level by id.
+    /// </summary>
+    /// <param name="id">The id of the car.</param>
+    /// <param name="stockLevel">The new stock level.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns true if the stock level was updated, otherwise false.</returns>
+    public async Task<bool> UpdateCarStockLevelByIdAsync(Guid id, int stockLevel, CancellationToken ct)
+    {
+        const string sql = """
+            UPDATE Cars
+            SET StockLevel = @StockLevel, UpdatedAt = @UpdatedAt
+            WHERE Id = @Id
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql, 
+                new { Id = id.ToString(), StockLevel = stockLevel, UpdatedAt = DateTimeOffset.UtcNow.ToString("O") },
+                cancellationToken: ct));
+
+        return rowsAffected > 0;
+    }
+
+    /// <summary>
     /// Car row. Returns by the SQL query.
     /// </summary>
     private sealed class CarRow
