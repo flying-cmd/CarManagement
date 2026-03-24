@@ -1,5 +1,5 @@
 using CarManagement.API.Middlewares;
-using CarManagement.Common.Constants;
+using CarManagement.Common.Extensions;
 using CarManagement.DataAccess.Data;
 using CarManagement.Models.Entities;
 using CarManagement.Repository.Interfaces;
@@ -9,11 +9,8 @@ using CarManagement.Service.Mappers;
 using CarManagement.Service.Services;
 using CarManagementApi.Repository.Interfaces;
 using FastEndpoints;
-using FastEndpoints.Security;
 using FastEndpoints.Swagger;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using NSwag;
 
 var builder = WebApplication.CreateBuilder();
 
@@ -22,15 +19,11 @@ builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("Da
 builder.Services.AddSingleton<SqliteConnectionFactory>();
 builder.Services.AddSingleton<DatabaseInitializer>();
 
-//Password hasher
+// Password hasher
 builder.Services.AddSingleton<IPasswordHasher<Dealer>, PasswordHasher<Dealer>>();
 
-//Jwt
-builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = builder.Configuration["Jwt:SigningKey"]);
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("DealerOnly", x => x.RequireRole(RoleNames.DEALER));
-});
+// Jwt authentication and authorization
+builder.Services.AddJwtAuthentication(builder.Configuration);
 
 // UserContext
 builder.Services.AddScoped<IUserContext, UserContext>();
@@ -48,22 +41,8 @@ builder.Services.AddScoped<ICarService, CarService>();
 
 builder.Services.AddFastEndpoints();
 
-builder.Services.SwaggerDocument(o =>
-{
-    o.EnableJWTBearerAuth = false;
-    o.DocumentSettings = s =>
-    {
-        s.Title = "Car Management API";
-        s.Version = "v1";
-        s.AddAuth("Bearer", new()
-        {
-            Type = OpenApiSecuritySchemeType.Http,
-            Scheme = JwtBearerDefaults.AuthenticationScheme,
-            BearerFormat = "JWT",
-            Description = "Enter the JWT token."
-        });
-    };
-});
+// Swagger
+builder.Services.AddAppSwagger();
 
 var app = builder.Build();
 
