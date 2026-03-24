@@ -78,4 +78,72 @@ public class CarRepository : ICarRepository
 
         return exists.HasValue;
     }
+
+    /// <summary>
+    /// Get car by id.
+    /// </summary>
+    /// <param name="id">The id of the car.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns the car if found, otherwise null.</returns>
+    public async Task<Car?> GetCarByIdAsync(Guid id, CancellationToken ct)
+    {
+        const string sql = "SELECT * FROM Cars WHERE Id = @Id";
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var row = await connection.QuerySingleOrDefaultAsync<CarRow>(
+            new CommandDefinition(
+                sql, 
+                new { Id = id.ToString() }, 
+                cancellationToken: ct));
+
+        if (row is null)
+        {
+            return null;
+        }
+
+        return Car.Rehydrate(
+            Guid.Parse(row.Id),
+            Guid.Parse(row.DealerId),
+            row.Make,
+            row.Model,
+            row.Year,
+            row.Colour,
+            row.Price,
+            row.StockLevel,
+            DateTimeOffset.Parse(row.CreatedAt),
+            DateTimeOffset.Parse(row.UpdatedAt));
+    }
+
+    public async Task<bool> RemoveCarByIdAsync(Guid id, CancellationToken ct)
+    {
+        const string sql = "DELETE FROM Cars WHERE Id = @Id";
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var rowsAffected = await connection.ExecuteAsync(
+            new CommandDefinition(
+                sql, 
+                new { Id = id.ToString() }, 
+                cancellationToken: ct));
+
+        return rowsAffected > 0;
+    }
+
+    /// <summary>
+    /// Car row. Returns by the SQL query.
+    /// </summary>
+    private sealed class CarRow
+    {
+        public string Id { get; set; } = null!;
+        public string DealerId { get; set; } = null!;
+        public string Make { get; set; } = null!;
+        public string Model { get; set; } = null!;
+        public int Year { get; set; }
+        public string Colour { get; set; } = null!;
+        public decimal Price { get; set; }
+        public int StockLevel { get; set; }
+        public string CreatedAt { get; set; } = null!;
+        public string UpdatedAt { get; set; } = null!;
+    }
 }

@@ -103,10 +103,10 @@ public class DealerRepository : IDealerRepository
     /// </summary>
     private sealed class DealerRow
     {
-        public string Id { get; set; } = string.Empty;
-        public string Name { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public string PasswordHash { get; set; } = string.Empty;
-        public string CreatedAt { get; set; } = string.Empty;
+        public string Id { get; set; } = null!;
+        public string Name { get; set; } = null!;
+        public string Email { get; set; } = null!;
+        public string PasswordHash { get; set; } = null!;
+        public string CreatedAt { get; set; } = null!;
     }
 }
