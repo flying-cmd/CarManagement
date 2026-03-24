@@ -59,6 +59,8 @@ public class CarService : ICarService
 
         await _carRepository.AddCarAsync(car, ct);
 
+        _logger.LogInformation("Car added successfully");
+
         return _carMapper.FromEntity(car);
     }
 
@@ -82,6 +84,8 @@ public class CarService : ICarService
 
         // List cars
         var cars = await _carRepository.ListCarsAsync(dealerId, req.PageNumber, req.PageSize, ct);
+
+        _logger.LogInformation("Cars listed successfully");
 
         return new PagedResult<CarResponseDto>
         {
@@ -137,6 +141,38 @@ public class CarService : ICarService
         }
 
         _logger.LogInformation("Car removed successfully");
+    }
+
+    /// <summary>
+    /// Search cars owned by the given dealer with optional make and model filters.
+    /// </summary>
+    /// <param name="req">The search request <see cref="SearchCarRequestDto"/>.</param>
+    /// <param name="dealerId">The id of the dealer whose cars to search.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="CarResponseDto"/></returns>
+    /// <exception cref="ApiException.Unauthorized(string)">Thrown if the dealer does not exist.</exception>
+    public async Task<PagedResult<CarResponseDto>> SearchCarsAsync(SearchCarRequestDto req, Guid dealerId, CancellationToken ct)
+    {
+        // Check if the dealer exists
+        var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
+        if (dealer is null)
+        {
+            _logger.LogError("Remove Car Failed: Unauthorized. Dealer not found");
+            throw ApiException.Unauthorized("Unauthorized");
+        }
+    
+        // Search cars
+        var cars = await _carRepository.SearchCarsAsync(dealerId, req.Make, req.Model, req.PageNumber, req.PageSize, ct);
+    
+        _logger.LogInformation("Cars searched successfully");
+
+        return new PagedResult<CarResponseDto>
+        {
+            Items = cars.Items.Select(car => _carMapper.FromEntity(car)).ToList(),
+            PageNumber = cars.PageNumber,
+            PageSize = cars.PageSize,
+            TotalCount = cars.TotalCount
+        };
     }
 
     /// <summary>

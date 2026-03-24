@@ -1,0 +1,44 @@
+﻿using CarManagement.Common.Constants;
+using CarManagement.Common.Helpers;
+using CarManagement.Service.DTOs.Car;
+using CarManagement.Service.Interfaces;
+using FastEndpoints;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+
+namespace CarManagement.API.Endpoints.Car;
+
+public sealed class SearchCarEndpoint : Endpoint<SearchCarRequestDto, ApiResponse<PagedResult<CarResponseDto>>>
+{
+    private readonly ICarService _carService;
+    private readonly IUserContext _userContext;
+
+    public SearchCarEndpoint(ICarService carService, IUserContext userContext)
+    {
+        _carService = carService;
+        _userContext = userContext;
+    }
+
+    public override void Configure()
+    {
+        Get("/api/cars/search");
+        AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
+        Roles(RoleNames.DEALER);
+        Summary(s =>
+        {
+            s.Summary = "Search cars";
+            s.Description = "Search cars in pagination.";
+            s.RequestParam(request => request.Make, "Optional. Make of the car");
+            s.RequestParam(request => request.Model, "Optional. Model of the car");
+            s.Response<ApiResponse<PagedResult<CarResponseDto>>>(StatusCodes.Status200OK, "List of cars.");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Invalid request.");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized.");
+        });
+    }
+
+    public override async Task HandleAsync(SearchCarRequestDto req, CancellationToken ct)
+    {
+        var result = await _carService.SearchCarsAsync(req, _userContext.DealerId, ct);
+        
+        await Send.OkAsync(ApiResponse<PagedResult<CarResponseDto>>.SuccessResponse(result), ct);
+    }
+}

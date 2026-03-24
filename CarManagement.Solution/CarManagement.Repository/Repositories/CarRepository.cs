@@ -194,6 +194,71 @@ public class CarRepository : ICarRepository
     }
 
     /// <summary>
+    /// Search cars owned by the given dealer with optional make and model filters.
+    /// </summary>
+    /// <param name="dealerId">The id of the dealer whose cars to search.</param>
+    /// <param name="make">Optional. The make of the car. When provided, cars whose make contains this string will be returned.</param>
+    /// <param name="model">Optional. The model of the car. When provided, cars whose model contains this string will be returned.</param>
+    /// <param name="pageNumber">The page number.</param>
+    /// <param name="pageSize">The page size. The number of items to return per page.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="Car"/>.</returns>
+    public async Task<PagedResult<Car>> SearchCarsAsync(Guid dealerId, string? make, string? model, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM Cars
+            WHERE DealerId = @DealerId
+            AND (@Make IS NULL OR LOWER(Make) LIKE '%' || LOWER(@Make) || '%')
+            AND (@Model IS NULL OR LOWER(Model) LIKE '%' || LOWER(@Model) || '%')
+            """;
+
+        const string pageSql = """
+            SELECT *
+            FROM Cars
+            WHERE DealerId = @DealerId
+            AND (@Make IS NULL OR LOWER(Make) LIKE '%' || LOWER(@Make) || '%')
+            AND (@Model IS NULL OR Model LIKE '%' || LOWER(@Model) || '%')
+            ORDER BY Make, Model, Year, Colour
+            LIMIT @PageSize
+            OFFSET (@PageNumber - 1) * @PageSize
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var totalCount = await connection.QuerySingleAsync<int>(
+            new CommandDefinition(
+                countSql, 
+                new { DealerId = dealerId.ToString(), Make = make, Model = model },
+                cancellationToken: ct));
+
+        var rows = await connection.QueryAsync<CarRow>(
+            new CommandDefinition(
+                pageSql, 
+                new { DealerId = dealerId.ToString(), Make = make, Model = model, PageNumber = pageNumber, PageSize = pageSize },
+                cancellationToken: ct));
+
+        return new PagedResult<Car>
+        {
+            Items = rows.Select(row => Car.Rehydrate(
+                Guid.Parse(row.Id),
+                Guid.Parse(row.DealerId),
+                row.Make,
+                row.Model,
+                row.Year,
+                row.Colour,
+                row.Price,
+                row.StockLevel,
+                DateTimeOffset.Parse(row.CreatedAt),
+                DateTimeOffset.Parse(row.UpdatedAt)
+                )).ToList(),
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
+    }
+
+    /// <summary>
     /// Update car stock level by id.
     /// </summary>
     /// <param name="id">The id of the car.</param>
