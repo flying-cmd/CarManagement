@@ -39,7 +39,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct)
     {
         // Check if dealer exists
-        var dealer = await _dealerRepository.GetDealerByEmailAsync(req.Email, ct);
+        var dealer = await _dealerRepository.GetDealerByEmailAsync(req.Email.Trim().ToLowerInvariant(), ct);
         if (dealer is null || _passwordHasher.VerifyHashedPassword(dealer, dealer.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
         {
             _logger.LogError("Login Failed: Invalid email or password");
@@ -69,8 +69,11 @@ public class AuthService : IAuthService
     /// <exception cref="ApiException.BadRequest(string)">Thrown if email already exists.</exception>
     public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto req, CancellationToken ct)
     {
+        var normalizedName = req.Name.Trim();
+        var normalizedEmail = req.Email.Trim().ToLowerInvariant();
+
         // Check if email already exists
-        var existingDealer = await _dealerRepository.GetDealerByEmailAsync(req.Email, ct);
+        var existingDealer = await _dealerRepository.GetDealerByEmailAsync(normalizedEmail, ct);
         if (existingDealer is not null)
         {
             _logger.LogError("Registration Failed: Email already exists");
@@ -78,7 +81,7 @@ public class AuthService : IAuthService
         }
 
         // Create new dealer
-        var dealer = Dealer.CreateDealer(req.Name, req.Email, req.Password, _passwordHasher);
+        var dealer = Dealer.CreateDealer(normalizedName, normalizedEmail, req.Password, _passwordHasher);
 
         await _dealerRepository.AddDealerAsync(dealer, ct);
 

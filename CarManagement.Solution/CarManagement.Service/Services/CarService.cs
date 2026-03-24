@@ -40,6 +40,10 @@ public class CarService : ICarService
     /// <exception cref="ApiException.BadRequest(string)">Thrown if car already exists.</exception>
     public async Task<CarResponseDto> AddCarAsync(AddCarRequestDto req, Guid dealerId, CancellationToken ct)
     {
+        var make = req.Make.Trim();
+        var model = req.Model.Trim();
+        var colour = req.Colour.Trim();
+
         // Check if dealer exists
         var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
         if (dealer is null)
@@ -49,14 +53,14 @@ public class CarService : ICarService
         }
 
         // Check if car already exists
-        if (await _carRepository.ExistsAsync(dealerId, req.Make, req.Model, req.Year, req.Colour, ct))
+        if (await _carRepository.ExistsAsync(dealerId, make, model, req.Year, colour, ct))
         {
             _logger.LogError("Add Car Failed: Car already exists");
             throw ApiException.BadRequest("Car already exists");
         }
 
         // Add car
-        var car = new Car(dealerId, req.Make, req.Model, req.Year, req.Colour, req.Price, req.StockLevel);
+        var car = new Car(dealerId, make, model, req.Year, colour, req.Price, req.StockLevel);
 
         await _carRepository.AddCarAsync(car, ct);
 
@@ -163,7 +167,7 @@ public class CarService : ICarService
         }
     
         // Search cars
-        var cars = await _carRepository.SearchCarsAsync(dealerId, req.Make, req.Model, req.PageNumber, req.PageSize, ct);
+        var cars = await _carRepository.SearchCarsAsync(dealerId, req.Make?.Trim(), req.Model?.Trim(), req.PageNumber, req.PageSize, ct);
     
         _logger.LogInformation("Cars searched successfully");
 
