@@ -138,4 +138,52 @@ public class CarService : ICarService
 
         _logger.LogInformation("Car removed successfully");
     }
+
+    /// <summary>
+    /// Update car stock level.
+    /// </summary>
+    /// <param name="id">The id of the car.</param>
+    /// <param name="stockLevel">The new stock level.</param>
+    /// <param name="dealerId">The id of the dealer.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns a task that represents the asynchronous operation.</returns>
+    /// <exception cref="ApiException.NotFound(string)">Thrown if the car is not found.</exception>
+    /// <exception cref="ApiException.Unauthorized(string)">Thrown if the dealer does not exist.</exception>
+    /// <exception cref="ApiException.Forbidden(string)">Thrown if the car does not belong to the dealer.</exception>
+    public async Task UpdateCarStockLevelByIdAsync(Guid id, int stockLevel, Guid dealerId, CancellationToken ct)
+    {
+        // Check if the dealer exists
+        var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
+        if (dealer is null)
+        {
+            _logger.LogError("Update Car Stock Level Failed: Unauthorized. Dealer not found");
+            throw ApiException.Unauthorized("Unauthorized");
+        }
+
+        // Check if the car exists
+        var car = await _carRepository.GetCarByIdAsync(id, ct);
+        if (car is null)
+        {
+            _logger.LogError("Update Car Stock Level Failed: Car not found");
+            throw ApiException.NotFound("Car not found");
+        }
+
+        // Check if the car belongs to the dealer
+        if (car.DealerId != dealerId)
+        {
+            _logger.LogError("Update Car Stock Level Failed: Car does not belong to the dealer");
+            throw ApiException.Forbidden("You are not authorized to update this car");
+        }
+
+        // Update car stock level
+        var result = await _carRepository.UpdateCarStockLevelByIdAsync(id, stockLevel, ct);
+
+        if (!result)
+        {
+            _logger.LogError("Update Car Stock Level Failed: Car not found");
+            throw ApiException.NotFound("Car not found");
+        }
+
+        _logger.LogInformation($"Car stock level updated to {stockLevel} successfully");
+    }
 }
