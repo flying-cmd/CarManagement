@@ -38,26 +38,16 @@ public class AuthService : IAuthService
     /// <exception cref="ApiException.Unauthorized(string)">Thrown if invalid email or password.</exception>
     public async Task<AuthResponseDto> LoginAsync(LoginRequestDto req, CancellationToken ct)
     {
+        // Check if dealer exists
         var dealer = await _dealerRepository.GetDealerByEmailAsync(req.Email, ct);
-
         if (dealer is null || _passwordHasher.VerifyHashedPassword(dealer, dealer.PasswordHash, req.Password) == PasswordVerificationResult.Failed)
         {
             _logger.LogError("Login Failed: Invalid email or password");
             throw ApiException.Unauthorized("Invalid email or password");
         }
 
-        var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:DurationInMinutes"));
-
-        var jwtToken = JwtBearer.CreateToken(
-            o =>
-            {
-                o.SigningKey = _configuration.GetValue<string>("Jwt:SigningKey")!;
-                o.ExpireAt = expiresAt;
-                o.User.Roles.Add("Dealer");
-                o.User.Claims.Add(("Email", dealer.Email));
-                o.User["Name"] = dealer.Name;
-                o.User["UserId"] = dealer.Id.ToString();
-            });
+        // Create JWT token
+        var (jwtToken, expiresAt) = GenerateJwtToken(dealer);
 
         _logger.LogInformation($"Dealer with id {dealer.Id} login successful");
 
@@ -93,18 +83,7 @@ public class AuthService : IAuthService
         await _dealerRepository.AddDealerAsync(dealer, ct);
 
         // Create JWT token
-        var expiresAt = DateTime.UtcNow.AddMinutes(_configuration.GetValue<int>("Jwt:DurationInMinutes"));
-
-        var jwtToken = JwtBearer.CreateToken(
-            o =>
-            {
-                o.SigningKey = _configuration.GetValue<string>("Jwt:SigningKey")!;
-                o.ExpireAt = expiresAt;
-                o.User.Roles.Add("Dealer");
-                o.User.Claims.Add(("Email", dealer.Email));
-                o.User["Name"] = dealer.Name;
-                o.User["UserId"] = dealer.Id.ToString();
-            });
+        var (jwtToken, expiresAt) = GenerateJwtToken(dealer);
 
         _logger.LogInformation($"Dealer with id {dealer.Id} registered successfully");
 
@@ -115,5 +94,41 @@ public class AuthService : IAuthService
             AccessToken = jwtToken,
             ExpiresAtUtc = expiresAt
         };
+    }
+
+    /// <summary>
+    /// Generate JWT token.
+    /// </summary>
+    /// <param name="dealer">The id of the dealer.</param>
+    /// <returns>Returns JWT token and expiration date.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if Jwt:DurationInMinutes is missing or invalid, or Jwt:SigningKey is missing.</exception>
+    private (string token, DateTime expiresAt) GenerateJwtToken(Dealer dealer)
+    {
+        var durationInMinutes = _configuration.GetValue<int?>("Jwt:DurationInMinutes");
+        if (!durationInMinutes.HasValue || durationInMinutes.Value <= 0)
+        {
+            throw new InvalidOperationException("Jwt:DurationInMinutes is missing or invalid.");
+        }
+        
+        var signingKey = _configuration.GetValue<string>("Jwt:SigningKey");
+        if (string.IsNullOrWhiteSpace(signingKey))
+        {
+            throw new InvalidOperationException("Jwt:SigningKey is missing.");
+        }
+
+        var expiresAt = DateTime.UtcNow.AddMinutes(durationInMinutes.Value);
+        
+        var jwtToken = JwtBearer.CreateToken(
+            o =>
+            {
+                o.SigningKey = signingKey;
+                o.ExpireAt = expiresAt;
+                o.User.Roles.Add("Dealer");
+                o.User.Claims.Add(("Email", dealer.Email));
+                o.User["Name"] = dealer.Name;
+                o.User["UserId"] = dealer.Id.ToString();
+            });
+
+        return (jwtToken, expiresAt);
     }
 }
