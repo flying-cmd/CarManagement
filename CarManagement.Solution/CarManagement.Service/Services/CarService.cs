@@ -1,4 +1,5 @@
-﻿using CarManagement.Common.Helpers;
+﻿using CarManagement.Common.Exceptions;
+using CarManagement.Common.Helpers;
 using CarManagement.Models.Entities;
 using CarManagement.Repository.Interfaces;
 using CarManagement.Service.DTOs.Car;
@@ -39,6 +40,10 @@ public class CarService : ICarService
     /// <exception cref="ApiException.BadRequest(string)">Thrown if car already exists.</exception>
     public async Task<CarResponseDto> AddCarAsync(AddCarRequestDto req, Guid dealerId, CancellationToken ct)
     {
+        var make = req.Make.Trim();
+        var model = req.Model.Trim();
+        var colour = req.Colour.Trim();
+
         // Check if dealer exists
         var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
         if (dealer is null)
@@ -48,16 +53,18 @@ public class CarService : ICarService
         }
 
         // Check if car already exists
-        if (await _carRepository.ExistsAsync(dealerId, req.Make, req.Model, req.Year, req.Colour, ct))
+        if (await _carRepository.ExistsAsync(dealerId, make, model, req.Year, colour, ct))
         {
             _logger.LogError("Add Car Failed: Car already exists");
             throw ApiException.BadRequest("Car already exists");
         }
 
         // Add car
-        var car = new Car(dealerId, req.Make, req.Model, req.Year, req.Colour, req.Price, req.StockLevel);
+        var car = new Car(dealerId, make, model, req.Year, colour, req.Price, req.StockLevel);
 
         await _carRepository.AddCarAsync(car, ct);
+
+        _logger.LogInformation("Car added successfully");
 
         return _carMapper.FromEntity(car);
     }
@@ -82,6 +89,8 @@ public class CarService : ICarService
 
         // List cars
         var cars = await _carRepository.ListCarsAsync(dealerId, req.PageNumber, req.PageSize, ct);
+
+        _logger.LogInformation("Cars listed successfully");
 
         return new PagedResult<CarResponseDto>
         {
@@ -137,6 +146,38 @@ public class CarService : ICarService
         }
 
         _logger.LogInformation("Car removed successfully");
+    }
+
+    /// <summary>
+    /// Search cars owned by the given dealer with optional make and model filters.
+    /// </summary>
+    /// <param name="req">The search request <see cref="SearchCarRequestDto"/>.</param>
+    /// <param name="dealerId">The id of the dealer whose cars to search.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="CarResponseDto"/></returns>
+    /// <exception cref="ApiException.Unauthorized(string)">Thrown if the dealer does not exist.</exception>
+    public async Task<PagedResult<CarResponseDto>> SearchCarsAsync(SearchCarRequestDto req, Guid dealerId, CancellationToken ct)
+    {
+        // Check if the dealer exists
+        var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
+        if (dealer is null)
+        {
+            _logger.LogError("Remove Car Failed: Unauthorized. Dealer not found");
+            throw ApiException.Unauthorized("Unauthorized");
+        }
+    
+        // Search cars
+        var cars = await _carRepository.SearchCarsAsync(dealerId, req.Make?.Trim(), req.Model?.Trim(), req.PageNumber, req.PageSize, ct);
+    
+        _logger.LogInformation("Cars searched successfully");
+
+        return new PagedResult<CarResponseDto>
+        {
+            Items = cars.Items.Select(car => _carMapper.FromEntity(car)).ToList(),
+            PageNumber = cars.PageNumber,
+            PageSize = cars.PageSize,
+            TotalCount = cars.TotalCount
+        };
     }
 
     /// <summary>

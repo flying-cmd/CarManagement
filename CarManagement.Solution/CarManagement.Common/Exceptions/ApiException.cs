@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 
-namespace CarManagement.Common.Helpers;
+namespace CarManagement.Common.Exceptions;
 
 public class ApiException : Exception
 {
