@@ -1,6 +1,6 @@
 ﻿namespace CarManagement.Service.DTOs;
 
-public class AuthResponseDto
+public sealed class AuthResponseDto
 {
     public string Name { get; set; } = null!;
     public string Email { get; set; } = null!;

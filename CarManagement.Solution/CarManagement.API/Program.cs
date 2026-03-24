@@ -11,7 +11,9 @@ using CarManagementApi.Repository.Interfaces;
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using NSwag;
 
 var builder = WebApplication.CreateBuilder();
 
@@ -48,10 +50,18 @@ builder.Services.AddFastEndpoints();
 
 builder.Services.SwaggerDocument(o =>
 {
+    o.EnableJWTBearerAuth = false;
     o.DocumentSettings = s =>
     {
         s.Title = "Car Management API";
         s.Version = "v1";
+        s.AddAuth("Bearer", new()
+        {
+            Type = OpenApiSecuritySchemeType.Http,
+            Scheme = JwtBearerDefaults.AuthenticationScheme,
+            BearerFormat = "JWT",
+            Description = "Enter the JWT token."
+        });
     };
 });
 

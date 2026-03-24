@@ -1,6 +1,6 @@
 ﻿namespace CarManagement.Service.DTOs;
 
-public class CarResponseDto
+public sealed class CarResponseDto
 {
     public Guid Id { get; set; }
     public Guid DealerId { get; set; }
