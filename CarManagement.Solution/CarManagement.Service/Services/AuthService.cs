@@ -1,4 +1,4 @@
-﻿using CarManagement.Common.Helpers;
+﻿using CarManagement.Common.Exceptions;
 using CarManagement.Models.Entities;
 using CarManagement.Service.DTOs.Auth;
 using CarManagement.Service.Interfaces;

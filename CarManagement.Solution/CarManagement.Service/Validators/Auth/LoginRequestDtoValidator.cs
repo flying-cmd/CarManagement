@@ -2,7 +2,7 @@
 using FastEndpoints;
 using FluentValidation;
 
-namespace CarManagement.Service.Validators;
+namespace CarManagement.Service.Validators.Auth;
 
 public class LoginRequestDtoValidator : Validator<LoginRequestDto>
 {

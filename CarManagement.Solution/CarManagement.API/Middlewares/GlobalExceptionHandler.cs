@@ -1,4 +1,5 @@
-﻿using CarManagement.Common.Helpers;
+﻿using CarManagement.Common.Exceptions;
+using CarManagement.Common.Helpers;
 using FluentValidation;
 
 namespace CarManagement.API.Middlewares;

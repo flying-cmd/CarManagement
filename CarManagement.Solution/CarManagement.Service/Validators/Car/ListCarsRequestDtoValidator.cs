@@ -2,7 +2,7 @@
 using FastEndpoints;
 using FluentValidation;
 
-namespace CarManagement.Service.Validators;
+namespace CarManagement.Service.Validators.Car;
 
 public class ListCarsRequestDtoValidator : Validator<ListCarsRequestDto>
 {

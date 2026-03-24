@@ -1,4 +1,5 @@
-﻿using CarManagement.Common.Helpers;
+﻿using CarManagement.Common.Exceptions;
+using CarManagement.Common.Helpers;
 using CarManagement.Models.Entities;
 using CarManagement.Repository.Interfaces;
 using CarManagement.Service.DTOs.Car;
