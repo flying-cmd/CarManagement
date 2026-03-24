@@ -1,4 +1,4 @@
-﻿namespace CarManagement.Service.DTOs;
+﻿namespace CarManagement.Service.DTOs.Auth;
 
 public sealed class RegisterRequestDto
 {

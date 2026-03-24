@@ -1,4 +1,4 @@
-﻿using CarManagement.Service.DTOs;
+﻿using CarManagement.Service.DTOs.Car;
 using FastEndpoints;
 using FluentValidation;
 

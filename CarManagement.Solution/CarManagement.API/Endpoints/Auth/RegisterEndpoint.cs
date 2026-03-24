@@ -1,5 +1,5 @@
 ﻿using CarManagement.Common.Helpers;
-using CarManagement.Service.DTOs;
+using CarManagement.Service.DTOs.Auth;
 using CarManagement.Service.Interfaces;
 using FastEndpoints;
 
