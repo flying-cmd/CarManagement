@@ -1,6 +1,6 @@
 ﻿using CarManagement.Common.Constants;
 using CarManagement.Common.Helpers;
-using CarManagement.Service.DTOs;
+using CarManagement.Service.DTOs.Car;
 using CarManagement.Service.Interfaces;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -38,7 +38,6 @@ public sealed class AddCarEndpoint : Endpoint<AddCarRequestDto, ApiResponse<CarR
             s.Response<ApiResponse<CarResponseDto>>(StatusCodes.Status201Created, "Car added successfully.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Car already exists or invalid request.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized");
-            s.Response<ApiResponse<object?>>(StatusCodes.Status404NotFound, "Dealer not found.");
         });
     }
 

@@ -1,6 +1,6 @@
 ﻿using CarManagement.Common.Constants;
 using CarManagement.Common.Helpers;
-using CarManagement.Service.DTOs;
+using CarManagement.Service.DTOs.Car;
 using CarManagement.Service.Interfaces;
 using FastEndpoints;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -29,7 +29,7 @@ public sealed class RemoveCarEndpoint : Endpoint<RemoveCarRequestDto>
             s.Description = "Remove car by given Id";
             s.Params["Id"] = "Id of the car";
             s.Response(StatusCodes.Status204NoContent, "Car removed successfully.");
-            s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Car or dealer not found.");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Car not found.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status403Forbidden, "Forbidden.");
         });
