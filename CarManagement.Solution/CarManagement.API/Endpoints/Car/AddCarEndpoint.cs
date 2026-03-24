@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace CarManagement.API.Endpoints.Car;
 
-public class AddCarEndpoint : Endpoint<AddCarRequestDto, ApiResponse<CarResponseDto>>
+public sealed class AddCarEndpoint : Endpoint<AddCarRequestDto, ApiResponse<CarResponseDto>>
 {
     private readonly ICarService _carService;
     private readonly IUserContext _userContext;
@@ -25,6 +25,21 @@ public class AddCarEndpoint : Endpoint<AddCarRequestDto, ApiResponse<CarResponse
         Post("/api/cars");
         AuthSchemes(JwtBearerDefaults.AuthenticationScheme);
         Roles(RoleNames.DEALER);
+        Summary(s =>
+        {
+            s.Summary = "Add car";
+            s.Description = "Add car with given Dealer Id, Make, Model, Year, Colour, Price and StockLevel";
+            s.RequestParam(request => request.Make, "Make of the car");
+            s.RequestParam(request => request.Model, "Model of the car");
+            s.RequestParam(request => request.Year, "Year of the car");
+            s.RequestParam(request => request.Colour, "Colour of the car");
+            s.RequestParam(request => request.Price, "Price of the car");
+            s.RequestParam(request => request.StockLevel, "StockLevel of the car");
+            s.Response<ApiResponse<CarResponseDto>>(StatusCodes.Status201Created, "Car added successfully.");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Car already exists or invalid request.");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status404NotFound, "Dealer not found.");
+        });
     }
 
     public override async Task HandleAsync(AddCarRequestDto req, CancellationToken ct)

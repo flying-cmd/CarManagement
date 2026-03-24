@@ -5,7 +5,7 @@ using FastEndpoints;
 
 namespace CarManagement.API.Endpoints.Auth;
 
-public class LoginEndpoint : Endpoint<LoginRequestDto, ApiResponse<AuthResponseDto>>
+public sealed class LoginEndpoint : Endpoint<LoginRequestDto, ApiResponse<AuthResponseDto>>
 {
     private readonly IAuthService _authService;
 

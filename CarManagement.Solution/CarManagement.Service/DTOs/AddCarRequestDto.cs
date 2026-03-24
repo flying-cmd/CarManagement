@@ -1,6 +1,6 @@
 ﻿namespace CarManagement.Service.DTOs;
 
-public class AddCarRequestDto
+public sealed class AddCarRequestDto
 {
     public string Make { get; set; } = null!;
     public string Model { get; set; } = null!;
