@@ -62,6 +62,14 @@ public class CarService : ICarService
         return _carMapper.FromEntity(car);
     }
 
+    /// <summary>
+    /// List cars in pagination.
+    /// </summary>
+    /// <param name="req">The request <see cref="ListCarsRequestDto"/>.</param>
+    /// <param name="dealerId">The dealer id.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="CarResponseDto"/>.</returns>
+    /// <exception cref="ApiException.Unauthorized(string)">Thrown if dealer does not exist.</exception>
     public async Task<PagedResult<CarResponseDto>> ListCarsAsync(ListCarsRequestDto req, Guid dealerId, CancellationToken ct)
     {
         // Check if dealer exists
@@ -72,7 +80,16 @@ public class CarService : ICarService
             throw ApiException.Unauthorized("Unauthorized");
         }
 
+        // List cars
+        var cars = await _carRepository.ListCarsAsync(dealerId, req.PageNumber, req.PageSize, ct);
 
+        return new PagedResult<CarResponseDto>
+        {
+            Items = cars.Items.Select(car => _carMapper.FromEntity(car)).ToList(),
+            PageNumber = cars.PageNumber,
+            PageSize = cars.PageSize,
+            TotalCount = cars.TotalCount
+        };
     }
 
     /// <summary>

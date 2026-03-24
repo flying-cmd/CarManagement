@@ -1,5 +1,5 @@
 ﻿using CarManagement.Models.Entities;
-using CarManagement.Service.DTOs;
+using CarManagement.Service.DTOs.Car;
 using FastEndpoints;
 
 namespace CarManagement.Service.Mappers;

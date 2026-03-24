@@ -1,4 +1,5 @@
-﻿using CarManagement.DataAccess.Data;
+﻿using CarManagement.Common.Helpers;
+using CarManagement.DataAccess.Data;
 using CarManagement.Models.Entities;
 using CarManagement.Repository.Interfaces;
 using Dapper;
@@ -73,7 +74,7 @@ public class CarRepository : ICarRepository
         var exists = await connection.QuerySingleOrDefaultAsync<int?>(
             new CommandDefinition(
                 sql, 
-                new { DealerId = dealerId, Make = make, Model = model, Year = year, Colour = colour }, 
+                new { DealerId = dealerId.ToString(), Make = make, Model = model, Year = year, Colour = colour },
                 cancellationToken: ct));
 
         return exists.HasValue;
@@ -115,6 +116,68 @@ public class CarRepository : ICarRepository
             DateTimeOffset.Parse(row.UpdatedAt));
     }
 
+    /// <summary>
+    /// List cars by given dealer id.
+    /// </summary>
+    /// <param name="dealerId">The id of the dealer.</param>
+    /// <param name="pageNumber">The page number.</param>
+    /// <param name="pageSize">The page size.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="Car"/>.</returns>
+    public async Task<PagedResult<Car>> ListCarsAsync(Guid dealerId, int pageNumber, int pageSize, CancellationToken ct)
+    {
+        const string countSql = """
+            SELECT COUNT(*)
+            FROM Cars
+            WHERE DealerId = @DealerId
+            """;
+
+        const string pageSql = """
+            SELECT *
+            FROM Cars
+            WHERE DealerId = @DealerId
+            ORDER BY Make, Model, Year, Colour
+            LIMIT @PageSize
+            OFFSET (@PageNumber - 1) * @PageSize
+            """;
+
+        using var connection = _connectionFactory.CreateConnection();
+
+        var totalCount = await connection.QuerySingleAsync<int>(
+            new CommandDefinition(countSql, new { DealerId = dealerId.ToString() }, cancellationToken: ct));
+
+        var rows = await connection.QueryAsync<CarRow>(
+            new CommandDefinition(
+                pageSql, 
+                new { DealerId = dealerId.ToString(), PageNumber = pageNumber, PageSize = pageSize },
+                cancellationToken: ct));
+
+        return new PagedResult<Car>
+        {
+            Items = rows.Select(row => Car.Rehydrate(
+                Guid.Parse(row.Id),
+                Guid.Parse(row.DealerId),
+                row.Make,
+                row.Model,
+                row.Year,
+                row.Colour,
+                row.Price,
+                row.StockLevel,
+                DateTimeOffset.Parse(row.CreatedAt),
+                DateTimeOffset.Parse(row.UpdatedAt)
+                )).ToList(),
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            TotalCount = totalCount
+        };
+    }
+
+    /// <summary>
+    /// Remove car by id.
+    /// </summary>
+    /// <param name="id">The id of the car to remove.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns true if the car was removed, otherwise false.</returns>
     public async Task<bool> RemoveCarByIdAsync(Guid id, CancellationToken ct)
     {
         const string sql = "DELETE FROM Cars WHERE Id = @Id";
