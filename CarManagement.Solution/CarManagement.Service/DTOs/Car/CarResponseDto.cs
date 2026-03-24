@@ -1,4 +1,4 @@
-﻿namespace CarManagement.Service.DTOs;
+﻿namespace CarManagement.Service.DTOs.Car;
 
 public sealed class CarResponseDto
 {
