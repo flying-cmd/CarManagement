@@ -7,6 +7,7 @@ public class Dealer
     public Guid Id { get; init; }
     public string Name { get; private set; } = null!;
     public string Email { get; private set; } = null!;
+    public string PhoneNumber { get; private set; } = null!;
     public string PasswordHash { get; private set; } = null!;
     public DateTimeOffset CreatedAt { get; init; }
 
@@ -15,12 +16,14 @@ public class Dealer
     /// </summary>
     /// <param name="name">The name of the dealer.</param>
     /// <param name="email">The email of the dealer.</param>
+    /// param name="phoneNumber">The phone number of the dealer.</param>
     /// <param name="plainPassword">The plain text password of the dealer.</param>
     /// <param name="passwordHasher">The password hasher.</param>
     /// <returns>Returns the new <see cref="Dealer"/>.</returns>
     public static Dealer CreateDealer(
         string name,
         string email,
+        string phoneNumber,
         string plainPassword,
         IPasswordHasher<Dealer> passwordHasher)
     {
@@ -29,6 +32,7 @@ public class Dealer
             Id = Guid.NewGuid(),
             Name = name,
             Email = email,
+            PhoneNumber = phoneNumber,
             CreatedAt = DateTimeOffset.UtcNow
         };
 
@@ -43,6 +47,7 @@ public class Dealer
     /// <param name="id">The id of the dealer.</param>
     /// <param name="name">The name of the dealer.</param>
     /// <param name="email">The email of the dealer.</param>
+    /// <param name="phoneNumber">The phone number of the dealer.</param>
     /// <param name="passwordHash">The password hash of the dealer.</param>
     /// <param name="createdAt">The creation date of the dealer.</param>
     /// <returns>Returns the rehydrated <see cref="Dealer"/>.</returns>
@@ -50,6 +55,7 @@ public class Dealer
         Guid id,
         string name,
         string email,
+        string phoneNumber,
         string passwordHash,
         DateTimeOffset createdAt)
     {
@@ -58,6 +64,7 @@ public class Dealer
             Id = id,
             Name = name,
             Email = email,
+            PhoneNumber = phoneNumber,
             PasswordHash = passwordHash,
             CreatedAt = createdAt
         };
