@@ -1,4 +1,5 @@
 ﻿using CarManagement.Common.Exceptions;
+using CarManagement.Common.Helpers;
 using CarManagement.Models.Entities;
 using CarManagement.Repository.Interfaces;
 using CarManagement.Repository.Repositories;
@@ -197,6 +198,162 @@ public class CarServiceTests
             Times.Once);
         _carRepositoryMock.Verify(
             x => x.AddCarAsync(It.IsAny<Car>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ListCarsAsync_WhenDealerDoesNotExist_ShouldThrowUnauthorized()
+    {
+        // Arrange
+        var request = new ListCarsRequestDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+        var dealerId = Guid.NewGuid();
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Dealer?)null);
+
+        // Act
+        var act = async () => await _sut.ListCarsAsync(request, dealerId, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ApiException>();
+        ex.Which.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+        ex.Which.Message.Should().Be("Unauthorized");
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.ListCarsAsync(dealerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+
+    public async Task ListCarsAsync_WhenDealerExists_ShouldListCars()
+    {
+        // Arrange
+        var request = new ListCarsRequestDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+        var dealerId = Guid.NewGuid();
+        var cars = new List<Car>
+        {
+            new Car(
+                dealerId,
+                "Audi",
+                "A4",
+                2018,
+                "White",
+                20000m,
+                10),
+            new Car(
+                dealerId,
+                "BMW",
+                "X5",
+                2019,
+                "Black",
+                25000m,
+                5)
+        };
+        var pagedCars = new PagedResult<Car>
+        {
+            Items = cars,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = cars.Count
+        };
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateDealer());
+
+        _carRepositoryMock
+            .Setup(x => x.ListCarsAsync(dealerId, request.PageNumber, request.PageSize, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagedCars);
+
+        // Act
+        var result = await _sut.ListCarsAsync(request, dealerId, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PageNumber.Should().Be(request.PageNumber);
+        result.PageSize.Should().Be(request.PageSize);
+        result.TotalCount.Should().Be(cars.Count);
+        result.Items.Should().BeEquivalentTo(cars);
+        result.Items[0].Id.Should().NotBeEmpty();
+        result.Items[0].DealerId.Should().Be(dealerId);
+        result.Items[0].Make.Should().Be(cars[0].Make);
+        result.Items[0].Model.Should().Be(cars[0].Model);
+        result.Items[0].Year.Should().Be(cars[0].Year);
+        result.Items[0].Colour.Should().Be(cars[0].Colour);
+        result.Items[0].Price.Should().Be(cars[0].Price);
+        result.Items[0].StockLevel.Should().Be(cars[0].StockLevel);
+        result.Items[1].Id.Should().NotBeEmpty();
+        result.Items[1].DealerId.Should().Be(dealerId);
+        result.Items[1].Make.Should().Be(cars[1].Make);
+        result.Items[1].Model.Should().Be(cars[1].Model);
+        result.Items[1].Year.Should().Be(cars[1].Year);
+        result.Items[1].Colour.Should().Be(cars[1].Colour);
+        result.Items[1].Price.Should().Be(cars[1].Price);
+        result.Items[1].StockLevel.Should().Be(cars[1].StockLevel);
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.ListCarsAsync(dealerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ListCarsAsync_WhenNoCarsExist_ShouldReturnEmptyList()
+    {
+        // Arrange
+        var request = new ListCarsRequestDto
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+        var dealerId = Guid.NewGuid();
+        var cars = new List<Car>();
+        var pagedCars = new PagedResult<Car>
+        {
+            Items = cars,
+            PageNumber = request.PageNumber,
+            PageSize = request.PageSize,
+            TotalCount = cars.Count
+        };
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateDealer());
+
+        _carRepositoryMock
+            .Setup(x => x.ListCarsAsync(dealerId, request.PageNumber, request.PageSize, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(pagedCars);
+
+        // Act
+        var result = await _sut.ListCarsAsync(request, dealerId, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.PageNumber.Should().Be(request.PageNumber);
+        result.PageSize.Should().Be(request.PageSize);
+        result.TotalCount.Should().Be(cars.Count);
+        result.Items.Should().BeEmpty();
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.ListCarsAsync(dealerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }
