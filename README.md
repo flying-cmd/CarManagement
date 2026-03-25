@@ -67,7 +67,7 @@ The request flow is:
 
 Key design points:
 - The RESTful APIs is built using a multi-layered architecture that clearly separates responsibilities across the API, Service, Repository, DataAccess, and Models layers. The API layer is responsible for handling HTTP requests and returning standardized responses, the Service layer implements business logic, the Repository layer uses Dapper for SQL-based data access, the DataAccess layer manages database connections and database initialization, and the Models layer defines domain entities. This separation of concerns significantly improves maintainability and testability. For example, when business logic or query requirements change, I can modify the corresponding layer in isolation without impacting the rest of the system
-- The JWT authentication and authorization strategy is implemented to ensure that dealers could only access and modify their own cars. authentication and authorization to ensure that dealers could only access and modify their own cars. `JwtTokenService` issues bearer tokens containing the `Dealer` role and a `UserId` claim
+- The JWT authentication and authorization strategy is implemented to ensure that dealers could only access and modify their own cars. By extracting the UserId from the JWT token and querying the database, the system verifies whether a car belongs to the authenticated dealer before allowing any access or update operations. `JwtTokenService` issues bearer tokens containing the `Dealer` role and a `UserId` claim
 - `UserContext` reads the authenticated dealer id from `HttpContext.User`
 - Global Exception Handler converts exceptions into consistent JSON error responses and provide a fallback mechanism for capturing any unhandled exceptions.
 
@@ -166,8 +166,16 @@ docker build -t carmanagement-api .
 
 ### Run the Container
 
+Create a host folder for the SQLite database in your current working directory:
+
 ```powershell
-docker run --rm -p 8080:8080 carmanagement-api
+New-Item -ItemType Directory -Force .\docker-data
+```
+
+Then run the container with a bind mount:
+
+```powershell
+docker run --rm -p 8080:8080 --mount type=bind,source="${PWD}\docker-data",target=/app/Database carmanagement-api
 ```
 
 The API will then be available at:
@@ -187,23 +195,23 @@ This is set through the Dockerfile environment override:
 Database__FilePath=/app/Database/CarManagement.db
 ```
 
-If you run the container without a volume mount:
+That means:
+
+- inside the container, the database file is `/app/Database/CarManagement.db`
+- on the host, the database file is created inside the folder you mounted to `/app/Database`
+
+If you use the command above from the repository root, the host database file will be:
+
+- `.\docker-data\CarManagement.db`
+
+In absolute form on Windows, that will resolve to:
+
+- `<current-working-directory>\docker-data\CarManagement.db`
+
+If you run the container without a bind mount:
 
 - the SQLite file exists only inside that container
 - the data is lost when the container is removed
-
-If you want the database to persist on your machine, mount a host folder to `/app/Database`.
-
-Example:
-
-```powershell
-docker run --rm -p 8080:8080 -v ${PWD}\docker-data:/app/Database carmanagement-api
-```
-
-With that command:
-
-- SQLite is still located at `/app/Database/CarManagement.db` inside the container
-- the actual file is stored on your host in `.\docker-data\CarManagement.db`
 
 ## Database
 
@@ -237,9 +245,59 @@ The database initializer seeds these dealer accounts on startup:
 
 These are useful for quick local testing.
 
+## Testing
+
+This solution includes:
+
+- service unit tests in [`CarManagement.UnitTests`](./CarManagement.Solution/CarManagement.UnitTests)
+- API integration tests in [`CarManagement.IntegrationTests/Api`](./CarManagement.Solution/CarManagement.IntegrationTests/Api)
+- repository integration tests in [`CarManagement.IntegrationTests/Repositories`](./CarManagement.Solution/CarManagement.IntegrationTests/Repositories)
+
+### Run All Tests
+
+From `CarManagement.Solution`:
+
+```powershell
+dotnet test .\CarManagement.Solution.sln
+```
+
+### Run Unit Tests Only
+
+```powershell
+dotnet test .\CarManagement.UnitTests\CarManagement.UnitTests.csproj
+```
+
+### Run Integration Tests Only
+
+```powershell
+dotnet test .\CarManagement.IntegrationTests\CarManagement.IntegrationTests.csproj
+```
+
+### Test Strategy
+
+Unit tests cover:
+
+- `AuthService`
+- `CarService`
+- `JwtTokenService`
+- `UserContext`
+
+Integration tests cover:
+
+- auth API endpoints
+- car API endpoints
+- dealer repository behavior against real SQLite
+- car repository behavior against real SQLite
+
+The integration test project uses:
+
+- `WebApplicationFactory<Program>` for API-level testing
+- temporary SQLite databases for isolation
+- real repository implementations for query verification
+
 ## API Conventions
 
-API endpoints return the generic `ApiResponse<T>` structure. For details, please see CarManagement.Common/Helpers/ApiResponse :
+API endpoints return the generic `ApiResponse<T>` structure. For details, please see `CarManagement.Common/Helpers/ApiResponse` :
 
 ```json
 {
@@ -306,23 +364,6 @@ Content-Type: application/json
 {
   "email": "dealer@example.com",
   "password": "Pass123$"
-}
-```
-
-Example login response:
-
-```json
-{
-  "success": true,
-  "statusCode": 200,
-  "message": "Login successfully",
-  "data": {
-    "name": "DealerOne",
-    "email": "dealer@example.com",
-    "accessToken": "<jwt>",
-    "expiresAtUtc": "2026-03-25T10:15:00+00:00"
-  },
-  "traceId": "00-..."
 }
 ```
 
@@ -414,56 +455,6 @@ Authorization: Bearer <jwt>
 
 - `Id` is required
 - `StockLevel` must be greater than or equal to `0` for stock updates
-
-## Testing
-
-This solution includes:
-
-- service unit tests in [`CarManagement.UnitTests`](./CarManagement.Solution/CarManagement.UnitTests)
-- API integration tests in [`CarManagement.IntegrationTests/Api`](./CarManagement.Solution/CarManagement.IntegrationTests/Api)
-- repository integration tests in [`CarManagement.IntegrationTests/Repositories`](./CarManagement.Solution/CarManagement.IntegrationTests/Repositories)
-
-### Run All Tests
-
-From `CarManagement.Solution`:
-
-```powershell
-dotnet test .\CarManagement.Solution.sln
-```
-
-### Run Unit Tests Only
-
-```powershell
-dotnet test .\CarManagement.UnitTests\CarManagement.UnitTests.csproj
-```
-
-### Run Integration Tests Only
-
-```powershell
-dotnet test .\CarManagement.IntegrationTests\CarManagement.IntegrationTests.csproj
-```
-
-### Test Strategy
-
-Unit tests cover:
-
-- `AuthService`
-- `CarService`
-- `JwtTokenService`
-- `UserContext`
-
-Integration tests cover:
-
-- auth API endpoints
-- car API endpoints
-- dealer repository behavior against real SQLite
-- car repository behavior against real SQLite
-
-The integration test project uses:
-
-- `WebApplicationFactory<Program>` for API-level testing
-- temporary SQLite databases for isolation
-- real repository implementations for query verification
 
 ## Useful Commands
 
