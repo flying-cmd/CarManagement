@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.Models", "Car
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.UnitTests", "CarManagement.UnitTests\CarManagement.UnitTests.csproj", "{059473F1-6761-4FEA-9911-B6B6BC9406E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.IntegrationTests", "CarManagement.IntegrationTests\CarManagement.IntegrationTests.csproj", "{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
