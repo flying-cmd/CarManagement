@@ -24,6 +24,7 @@ builder.Services.AddSingleton<IPasswordHasher<Dealer>, PasswordHasher<Dealer>>()
 
 // Jwt authentication and authorization
 builder.Services.AddJwtAuthentication(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
 
 // UserContext
 builder.Services.AddScoped<IUserContext, UserContext>();
@@ -38,6 +39,7 @@ builder.Services.AddScoped<ICarRepository, CarRepository>();
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICarService, CarService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 builder.Services.AddFastEndpoints();
 
@@ -65,3 +67,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Used for integration tests
+public partial class Program { }
