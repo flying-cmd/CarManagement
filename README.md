@@ -152,6 +152,59 @@ Swagger UI:
 - `http://localhost:5177/swagger`
 - `https://localhost:7036/swagger`
 
+## Run with Docker
+
+The repository includes a root-level [`Dockerfile`](./Dockerfile) for containerized deployment.
+
+### Build the Image
+
+From the repository root:
+
+```powershell
+docker build -t carmanagement-api .
+```
+
+### Run the Container
+
+```powershell
+docker run --rm -p 8080:8080 carmanagement-api
+```
+
+The API will then be available at:
+
+- `http://localhost:8080`
+- `http://localhost:8080/swagger`
+
+### SQLite Location in Docker
+
+Inside the container, SQLite is configured to use:
+
+- `/app/Database/CarManagement.db`
+
+This is set through the Dockerfile environment override:
+
+```text
+Database__FilePath=/app/Database/CarManagement.db
+```
+
+If you run the container without a volume mount:
+
+- the SQLite file exists only inside that container
+- the data is lost when the container is removed
+
+If you want the database to persist on your machine, mount a host folder to `/app/Database`.
+
+Example:
+
+```powershell
+docker run --rm -p 8080:8080 -v ${PWD}\docker-data:/app/Database carmanagement-api
+```
+
+With that command:
+
+- SQLite is still located at `/app/Database/CarManagement.db` inside the container
+- the actual file is stored on your host in `.\docker-data\CarManagement.db`
+
 ## Database
 
 The application uses SQLite.
