@@ -215,7 +215,7 @@ If you run the container without a bind mount:
 
 ## Database
 
-The application uses SQLite.
+The application uses SQLite. The existing database is located in the [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db).
 
 Default database configuration in [`appsettings.json`](./CarManagement.Solution/CarManagement.API/appsettings.json):
 
@@ -236,12 +236,18 @@ On startup, the app automatically:
 - creates the `Cars` table
 - seeds demo dealers if they do not already exist
 
+If you want a clean local database, stop the API and delete:
+
+- [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db)
+
+The database will be recreated automatically on next startup.
+
 ## Seeded Demo Accounts
 
 The database initializer seeds these dealer accounts on startup:
 
-- `tom@example.com` / `Pass123$`
-- `jack@example.com` / `Pass123$`
+- email: `tom@example.com` / password: `Pass123$`
+- email: `jack@example.com` / password: `Pass123$`
 
 These are useful for quick local testing.
 
