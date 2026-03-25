@@ -24,7 +24,7 @@ public sealed class RegisterEndpoint : Endpoint<RegisterRequestDto, ApiResponse<
             s.Description = "Registers a new dealer using email and password, then returns a JWT access token.";
             s.RequestParam(request => request.Name, "The dealer's name.");
             s.RequestParam(request => request.Email, "The dealer's email address.");
-            s.RequestParam(request => request.Password, "The dealer's password.");
+            s.RequestParam(request => request.Password, "The dealer's password. Must be at least 6 characters long and cannot exceed 20 characters. Must contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
             s.Response<ApiResponse<AuthResponseDto>>(StatusCodes.Status201Created, "Registration successfully.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "The registration request failed validation.");
         });

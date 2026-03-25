@@ -28,7 +28,7 @@ public sealed class ListCarsEndpoint : Endpoint<ListCarsRequestDto, ApiResponse<
             s.Summary = "List cars";
             s.Description = "List cars in pagination.";
             s.RequestParam(request => request.PageNumber, "Page number.");
-            s.RequestParam(request => request.PageSize, "Page size.");
+            s.RequestParam(request => request.PageSize, "Page size. The number of items per page.");
             s.Response<ApiResponse<PagedResult<CarResponseDto>>>(StatusCodes.Status200OK, "List of cars.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Invalid request.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized.");
