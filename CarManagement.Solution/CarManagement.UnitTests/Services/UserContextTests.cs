@@ -8,6 +8,11 @@ namespace CarManagement.UnitTests.Services;
 
 public class UserContextTests
 {
+    /// <summary>
+    /// Build a HttpContext for testing and assign a claim to it.
+    /// </summary>
+    /// <param name="claims">The claims to include in the test user's identity.</param>
+    /// <returns>Returns a HttpContext containing a user with the specified claims.</returns>
     private static DefaultHttpContext BuildHttpContext(params Claim[] claims)
     {
         var context = new DefaultHttpContext();
