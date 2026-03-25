@@ -356,4 +356,205 @@ public class CarServiceTests
             x => x.ListCarsAsync(dealerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
+
+    [Fact]
+    public async Task RemoveCarByIdAsync_WhenDealerDoesNotExist_ShouldThrowUnauthorized()
+    {
+        // Arrange
+        var dealerId = Guid.NewGuid();
+        var carId = Guid.NewGuid();
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Dealer?)null);
+
+        // Act
+        var act = async () => await _sut.RemoveCarByIdAsync(carId, dealerId, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ApiException>();
+        ex.Which.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+        ex.Which.Message.Should().Be("Unauthorized");
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveCarByIdAsync_WhenCarDoesNotExist_ShouldThrowNotFound()
+    {
+        // Arrange
+        var dealerId = Guid.NewGuid();
+        var carId = Guid.NewGuid();
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateDealer());
+
+        _carRepositoryMock
+            .Setup(x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Car?)null);
+
+        // Act
+        var act = async () => await _sut.RemoveCarByIdAsync(carId, dealerId, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ApiException>();
+        ex.Which.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+        ex.Which.Message.Should().Be("Car not found");
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveCarByIdAsync_WhenCarDoesNotBelongToCurrentDealer_ShouldThrowForbidden()
+    {
+        // Arrange
+        var currentDealerId = Guid.NewGuid();
+        var anotherDealerId = Guid.NewGuid();
+        var carId = Guid.NewGuid();
+        var car = Car.Rehydrate(
+            carId,
+            anotherDealerId,
+            "Audi",
+            "A8",
+            2022,
+            "Red",
+            10000m,
+            10,
+            DateTime.UtcNow,
+            DateTime.UtcNow);
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(currentDealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateDealer());
+
+        _carRepositoryMock
+            .Setup(x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(car);
+
+        // Act
+        var act = async () => await _sut.RemoveCarByIdAsync(carId, currentDealerId, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ApiException>();
+        ex.Which.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        ex.Which.Message.Should().Be("You are not authorized to remove this car");
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(currentDealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveCarByIdAsync_WhenRepositoryRemoveReturnsFalse_ShouldThrowNotFound()
+    {
+        // Arrange
+        var dealerId = Guid.NewGuid();
+        var carId = Guid.NewGuid();
+        var car = Car.Rehydrate(
+            carId,
+            dealerId,
+            "Audi",
+            "A8",
+            2022,
+            "Red",
+            10000m,
+            10,
+            DateTime.UtcNow,
+            DateTime.UtcNow);
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateDealer());
+
+        _carRepositoryMock
+            .Setup(x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(car);
+
+        _carRepositoryMock
+            .Setup(x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        // Act
+        var act = async () => await _sut.RemoveCarByIdAsync(carId, dealerId, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<ApiException>();
+        ex.Which.StatusCode.Should().Be(StatusCodes.Status404NotFound);
+        ex.Which.Message.Should().Be("Car not found");
+
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task RemoveCarByIdAsync_WhenRepositoryRemoveReturnsTrue_ShouldRemoveSuccessfully()
+    {
+        // Arrange
+        var dealerId = Guid.NewGuid();
+        var carId = Guid.NewGuid();
+        var car = Car.Rehydrate(
+            carId,
+            dealerId,
+            "Audi",
+            "A8",
+            2022,
+            "Red",
+            10000m,
+            10,
+            DateTime.UtcNow,
+            DateTime.UtcNow);
+
+        _dealerRepositoryMock
+            .Setup(x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CreateDealer());
+
+        _carRepositoryMock
+            .Setup(x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(car);
+
+        _carRepositoryMock
+            .Setup(x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        // Act
+        await _sut.RemoveCarByIdAsync(carId, dealerId, CancellationToken.None);
+
+        // Assert
+        _dealerRepositoryMock.Verify(
+            x => x.GetDealerByIdAsync(dealerId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.GetCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Once);
+        _carRepositoryMock.Verify(
+            x => x.RemoveCarByIdAsync(carId, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
 }
