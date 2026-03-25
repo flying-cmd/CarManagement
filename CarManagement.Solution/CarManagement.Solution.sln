@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36603.0 d17.14
+VisualStudioVersion = 17.14.36603.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.API", "CarManagement.API\CarManagement.API.csproj", "{70F20029-09EE-447E-9D49-446DF3788A2F}"
 EndProject
@@ -14,6 +14,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.DataAccess", "CarManagement.DataAccess\CarManagement.DataAccess.csproj", "{84CB81F8-4C43-4711-ABE3-CB0BF86E4B66}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.Models", "CarManagement.Models\CarManagement.Models.csproj", "{99A41E36-4392-4A8C-A651-4A1B19FF21EF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.UnitTests", "CarManagement.UnitTests\CarManagement.UnitTests.csproj", "{059473F1-6761-4FEA-9911-B6B6BC9406E1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CarManagement.IntegrationTests", "CarManagement.IntegrationTests\CarManagement.IntegrationTests.csproj", "{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -45,6 +49,14 @@ Global
 		{99A41E36-4392-4A8C-A651-4A1B19FF21EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{99A41E36-4392-4A8C-A651-4A1B19FF21EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{99A41E36-4392-4A8C-A651-4A1B19FF21EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{059473F1-6761-4FEA-9911-B6B6BC9406E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE7836D1-1090-4DBA-BAE9-5A2D7B609FDB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

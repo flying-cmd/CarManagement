@@ -3,9 +3,7 @@ using CarManagement.Models.Entities;
 using CarManagement.Service.DTOs.Auth;
 using CarManagement.Service.Interfaces;
 using CarManagementApi.Repository.Interfaces;
-using FastEndpoints.Security;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace CarManagement.Service.Services;
@@ -14,18 +12,18 @@ public class AuthService : IAuthService
 {
     private readonly IDealerRepository _dealerRepository;
     private readonly IPasswordHasher<Dealer> _passwordHasher;
-    private readonly IConfiguration _configuration;
+    private readonly IJwtTokenService _jwtTokenService;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IDealerRepository dealerRepository,
         IPasswordHasher<Dealer> passwordHasher,
-        IConfiguration configuration,
+        IJwtTokenService jwtTokenService,
         ILogger<AuthService> logger)
     {
         _dealerRepository = dealerRepository;
         _passwordHasher = passwordHasher;
-        _configuration = configuration;
+        _jwtTokenService = jwtTokenService;
         _logger = logger;
     }
 
@@ -47,7 +45,7 @@ public class AuthService : IAuthService
         }
 
         // Create JWT token
-        var (jwtToken, expiresAt) = GenerateJwtToken(dealer);
+        var (jwtToken, expiresAt) = _jwtTokenService.GenerateToken(dealer);
 
         _logger.LogInformation($"Dealer with id {dealer.Id} login successful");
 
@@ -86,7 +84,7 @@ public class AuthService : IAuthService
         await _dealerRepository.AddDealerAsync(dealer, ct);
 
         // Create JWT token
-        var (jwtToken, expiresAt) = GenerateJwtToken(dealer);
+        var (jwtToken, expiresAt) = _jwtTokenService.GenerateToken(dealer);
 
         _logger.LogInformation($"Dealer with id {dealer.Id} registered successfully");
 
@@ -97,41 +95,5 @@ public class AuthService : IAuthService
             AccessToken = jwtToken,
             ExpiresAtUtc = expiresAt
         };
-    }
-
-    /// <summary>
-    /// Generate JWT token.
-    /// </summary>
-    /// <param name="dealer">The id of the dealer.</param>
-    /// <returns>Returns JWT token and expiration date.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if Jwt:DurationInMinutes is missing or invalid, or Jwt:SigningKey is missing.</exception>
-    private (string token, DateTime expiresAt) GenerateJwtToken(Dealer dealer)
-    {
-        var durationInMinutes = _configuration.GetValue<int?>("Jwt:DurationInMinutes");
-        if (!durationInMinutes.HasValue || durationInMinutes.Value <= 0)
-        {
-            throw new InvalidOperationException("Jwt:DurationInMinutes is missing or invalid.");
-        }
-        
-        var signingKey = _configuration.GetValue<string>("Jwt:SigningKey");
-        if (string.IsNullOrWhiteSpace(signingKey))
-        {
-            throw new InvalidOperationException("Jwt:SigningKey is missing.");
-        }
-
-        var expiresAt = DateTime.UtcNow.AddMinutes(durationInMinutes.Value);
-        
-        var jwtToken = JwtBearer.CreateToken(
-            o =>
-            {
-                o.SigningKey = signingKey;
-                o.ExpireAt = expiresAt;
-                o.User.Roles.Add("Dealer");
-                o.User.Claims.Add(("Email", dealer.Email));
-                o.User["Name"] = dealer.Name;
-                o.User["UserId"] = dealer.Id.ToString();
-            });
-
-        return (jwtToken, expiresAt);
     }
 }
