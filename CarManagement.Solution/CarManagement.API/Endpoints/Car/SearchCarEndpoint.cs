@@ -27,8 +27,10 @@ public sealed class SearchCarEndpoint : Endpoint<SearchCarRequestDto, ApiRespons
         {
             s.Summary = "Search cars";
             s.Description = "Search cars in pagination.";
-            s.RequestParam(request => request.Make, "Optional. Make of the car");
-            s.RequestParam(request => request.Model, "Optional. Model of the car");
+            s.RequestParam(request => request.Make, "Optional. Make of the car.");
+            s.RequestParam(request => request.Model, "Optional. Model of the car.");
+            s.RequestParam(request => request.PageNumber, "Page number.");
+            s.RequestParam(request => request.PageSize, "Page size. The number of items per page.");
             s.Response<ApiResponse<PagedResult<CarResponseDto>>>(StatusCodes.Status200OK, "List of cars.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Invalid request.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized.");

@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+**/*.cache
+.git/
+.github/
+CarManagement.Solution/build.log
+CarManagement.Solution/restore.log
