@@ -40,7 +40,7 @@ public sealed class UpdateCarStockLevelEndpoint : Endpoint<UpdateCarStockLevelRe
     public override async Task HandleAsync(UpdateCarStockLevelRequestDto req, CancellationToken ct)
     {
         await _carService.UpdateCarStockLevelByIdAsync(req.Id, req.StockLevel, _userContext.DealerId, ct);
-        
+
         await Send.NoContentAsync(ct);
     }
 }
