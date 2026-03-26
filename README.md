@@ -59,11 +59,11 @@ The request flow is:
 3. The endpoint delegates to a service in `CarManagement.Service/Services` layer.
 4. The service layer applies business logic and calls repository to query data.
 5. The repository layer runs SQL queries through Dapper against SQLite.
-6. Responses aare wrapped in the generic ApiResponse<T> response.
+6. Responses are wrapped in the generic ApiResponse<T> response.
 
 Key design points:
-- The RESTful APIs is built using a multi-layered architecture that clearly separates responsibilities across the API, Service, Repository, DataAccess, and Models layers. The API layer is responsible for handling HTTP requests and returning standardized responses, the Service layer implements business logic, the Repository layer uses Dapper for SQL-based data access, the DataAccess layer manages database connections and database initialization, and the Models layer defines domain entities. This separation of concerns significantly improves maintainability and testability. For example, when business logic or query requirements change, I can modify the corresponding layer in isolation without impacting the rest of the system
-- The JWT authentication and authorization strategy is implemented to ensure that dealers could only access and modify their own cars. By extracting the UserId from the JWT token and querying the database, the system verifies whether a car belongs to the authenticated dealer before allowing any access or update operations. `JwtTokenService` issues bearer tokens containing the `Dealer` role and a `UserId` claim
+- The RESTful APIs is built using a multi-layered architecture that clearly separates responsibilities across the API, Service, Repository, DataAccess, and Models layers. The API layer is responsible for handling HTTP requests and returning standardized responses, the Service layer implements business logic, the Repository layer uses Dapper for SQL-based data access, the DataAccess layer manages database connections and database initialization, and the Models layer defines domain entities. This separation of concerns significantly improves maintainability and testability. For example, when business logic or query requirements change, I can modify the corresponding layer in isolation without impacting the rest of the system.
+- The JWT authentication and authorization strategy is implemented to ensure that dealers could only access and modify their own cars. By extracting the `UserId` from the JWT token and querying the database, the system verifies whether a car belongs to the authenticated dealer before allowing any access or update operations. `JwtTokenService` issues bearer tokens containing the `Dealer` role and a `UserId` claim.
 - `UserContext` reads the authenticated dealer id from `HttpContext.User`
 - Global Exception Handler converts exceptions into consistent JSON error responses and provide a fallback mechanism for capturing any unhandled exceptions.
 
@@ -82,7 +82,7 @@ Key design points:
 - all car endpoints require an authenticated dealer
 - add car: Add car and create car stock. If the car already exists, reuse it and create a new car stock for the current dealer. Otherwise, create a new car and a new car stock for the current dealer.
 - remove car: Remove car's stock level. If there is no stock level left for all dealers, remove the car.
-- list cars and stock levels: list cars and stock levels in pagination.
+- list cars and stock levels: list cars owned by the current dealer and their stock levels in pagination.
 - update car stock levels: Update car stock level.
 - search car by make and model:  search cars owned by the current dealer with optional make and model filters. The returned reult is in pagination.
 
@@ -197,24 +197,29 @@ It also seeds example stock for `Car`:
 - `Mazda Mazda3 2023`
 - `Honda Civic 2021`
 
+For more details, please check [`CarManagement.Solution/CarManagement.DataAccess/Data/DatabaseInitializer.cs`](./CarManagement.Solution/CarManagement.DataAccess/Data/DatabaseInitializer.cs)
+
 ## Run with Docker
 
 The repository includes a root-level [`Dockerfile`](./Dockerfile).
 
 Build the image from the repository root:
 
+powershell:
 ```powershell
 docker build -t carmanagement-api .
 ```
 
 Create a host folder for the SQLite database in your current working directory:
 
+powershell:
 ```powershell
 New-Item -ItemType Directory -Force .\docker-data
 ```
 
 Then run the container with a bind mount:
 
+powershell:
 ```powershell
 docker run --rm -p 8080:8080 --mount type=bind,source="${PWD}\docker-data",target=/app/Database carmanagement-api
 ```
@@ -251,6 +256,8 @@ If you run the container without a bind mount:
 
 - the SQLite file exists only inside that container
 - the data is lost when the container is removed
+
+## Testing
 
 This solution includes:
 
@@ -302,7 +309,7 @@ The integration test project uses:
 
 ## API Conventions
 
-API endpoints return the generic `ApiResponse<T>` structure. For details, please see `CarManagement.Common/Helpers/ApiResponse` :
+API endpoints return the generic `ApiResponse<T>` structure. For details, please check [`CarManagement.Solution/CarManagement.Common/Helpers/ApiResponse.cs`](./CarManagement.Solution/CarManagement.Common/Helpers/ApiResponse.cs).
 
 ```json
 {
