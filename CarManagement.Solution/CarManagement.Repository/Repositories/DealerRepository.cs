@@ -23,19 +23,20 @@ public class DealerRepository : IDealerRepository
     public async Task AddDealerAsync(Dealer dealer, CancellationToken ct)
     {
         const string sql = """
-            INSERT INTO Dealers (Id, Name, Email, PasswordHash, CreatedAt) 
-            VALUES (@Id, @Name, @Email, @PasswordHash, @CreatedAt)
+            INSERT INTO Dealers (Id, Name, Email, PhoneNumber, PasswordHash, CreatedAt)
+            VALUES (@Id, @Name, @Email, @PhoneNumber, @PasswordHash, @CreatedAt)
             """;
 
         using var connection = _connectionFactory.CreateConnection();
-        
+
         await connection.ExecuteAsync(new CommandDefinition(
-            sql, 
+            sql,
             new
             {
                 Id = dealer.Id.ToString(),
                 Name = dealer.Name,
                 Email = dealer.Email,
+                PhoneNumber = dealer.PhoneNumber,
                 PasswordHash = dealer.PasswordHash,
                 CreatedAt = dealer.CreatedAt.ToString("O")
             },
@@ -56,7 +57,7 @@ public class DealerRepository : IDealerRepository
 
         var row = await connection.QuerySingleOrDefaultAsync<DealerRow>(
             new CommandDefinition(sql, new { email }, cancellationToken: ct));
-    
+
         if (row is null)
         {
             return null;
@@ -66,6 +67,7 @@ public class DealerRepository : IDealerRepository
             Guid.Parse(row.Id),
             row.Name,
             row.Email,
+            row.PhoneNumber,
             row.PasswordHash,
             DateTimeOffset.Parse(row.CreatedAt));
     }
@@ -94,6 +96,7 @@ public class DealerRepository : IDealerRepository
             Guid.Parse(row.Id),
             row.Name,
             row.Email,
+            row.PhoneNumber,
             row.PasswordHash,
             DateTimeOffset.Parse(row.CreatedAt));
     }
@@ -106,6 +109,7 @@ public class DealerRepository : IDealerRepository
         public string Id { get; set; } = null!;
         public string Name { get; set; } = null!;
         public string Email { get; set; } = null!;
+        public string PhoneNumber { get; set; } = null!;
         public string PasswordHash { get; set; } = null!;
         public string CreatedAt { get; set; } = null!;
     }
