@@ -1,4 +1,4 @@
-﻿using CarManagement.Models.Entities;
+using CarManagement.Models.Entities;
 using CarManagement.Service.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
@@ -38,10 +38,11 @@ public class JwtTokenServiceTests
     private static Dealer CreateDealer(
         string name = "Dealer One",
         string email = "dealer@example.com",
+        string phoneNumber = "1234567890",
         string password = "P@ssword123!")
     {
         var hasher = new PasswordHasher<Dealer>();
-        return Dealer.CreateDealer(name, email, password, hasher);
+        return Dealer.CreateDealer(name, email, phoneNumber, password, hasher);
     }
 
     [Fact]
@@ -50,7 +51,7 @@ public class JwtTokenServiceTests
         // Arrange
         var configuration = BuildConfiguration(durationInMinutes: null);
         var dealer = CreateDealer();
-        
+
         var sut = new JwtTokenService(configuration);
 
         // Act
@@ -69,7 +70,7 @@ public class JwtTokenServiceTests
         // Arrange
         var configuration = BuildConfiguration(durationInMinutes: durationInMinutes);
         var dealer = CreateDealer();
-        
+
         var sut = new JwtTokenService(configuration);
 
         // Act
@@ -86,7 +87,7 @@ public class JwtTokenServiceTests
         // Arrange
         var configuration = BuildConfiguration(signingKey: null);
         var dealer = CreateDealer();
-        
+
         var sut = new JwtTokenService(configuration);
 
         // Act
@@ -105,7 +106,7 @@ public class JwtTokenServiceTests
         // Arrange
         var configuration = BuildConfiguration(signingKey: signingKey);
         var dealer = CreateDealer();
-        
+
         var sut = new JwtTokenService(configuration);
 
         // Act

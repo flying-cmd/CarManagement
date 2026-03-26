@@ -1,4 +1,4 @@
-﻿using CarManagement.Common.Exceptions;
+using CarManagement.Common.Exceptions;
 using CarManagement.Service.Services;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
