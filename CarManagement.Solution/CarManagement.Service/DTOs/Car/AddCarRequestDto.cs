@@ -18,17 +18,12 @@ public sealed class AddCarRequestDto
     public int Year { get; set; }
 
     /// <summary>
-    /// The colour of the car.
-    /// </summary>
-    public string Colour { get; set; } = null!;
-
-    /// <summary>
-    /// The price of the car.
-    /// </summary>
-    public decimal Price { get; set; }
-
-    /// <summary>
     /// The stock level of the car.
     /// </summary>
     public int StockLevel { get; set; }
+
+    /// <summary>
+    /// The unit price of the car.
+    /// </summary>
+    public decimal UnitPrice { get; set; }
 }

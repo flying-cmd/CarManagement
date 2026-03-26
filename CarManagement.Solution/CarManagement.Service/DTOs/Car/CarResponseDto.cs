@@ -1,6 +1,6 @@
 ﻿namespace CarManagement.Service.DTOs.Car;
 
-public sealed class CarResponseDto
+public class CarResponseDto
 {
     /// <summary>
     /// The id of the car.
@@ -11,6 +11,11 @@ public sealed class CarResponseDto
     /// The id of the dealer who owns the car.
     /// </summary>
     public Guid DealerId { get; set; }
+
+    /// <summary>
+    /// The id of the car stock.
+    /// </summary>
+    public Guid CarStockId { get; set; }
 
     /// <summary>
     /// The make of the car.
@@ -28,14 +33,9 @@ public sealed class CarResponseDto
     public int Year { get; set; }
 
     /// <summary>
-    /// The colour of the car.
-    /// </summary>
-    public string Colour { get; set; } = null!;
-
-    /// <summary>
     /// The price of the car.
     /// </summary>
-    public decimal Price { get; set; }
+    public decimal UnitPrice { get; set; }
 
     /// <summary>
     /// The stock level of the car.
@@ -50,5 +50,5 @@ public sealed class CarResponseDto
     /// <summary>
     /// The time the car was last updated.
     /// </summary>
-    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset StockUpdatedAt { get; set; }
 }
