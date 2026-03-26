@@ -10,7 +10,7 @@ public class CarStock
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public CarStock(
-        Guid dealerId, 
+        Guid dealerId,
         Guid carId, 
         int stockLevel, 
         decimal unitPrice)
