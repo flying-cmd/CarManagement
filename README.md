@@ -2,18 +2,17 @@
 
 A Web API for dealers to manage their car stocks.
 
-The solution uses FastEndpoints for HTTP endpoints, JWT bearer authentication for protected routes, SQLite for persistence, Dapper for data access, and xUnit-based unit and integration tests.
+The project uses FastEndpoints for HTTP endpoints, JWT bearer authentication for protected routes, SQLite for persistence, Dapper for data access, and xUnit-based unit and integration tests.
 
 ## What This Project Does
 
-The API allows a dealer to:
-
-- register and login
-- add cars to their own inventory
-- remove their own cars
-- list their cars with pagination
-- update stock level for their own cars
-- search their cars by make and model
+- dealer registration and login
+- JWT-protected car management endpoints
+- add a car with stock level and unit price
+- remove a dealer's stock level for a car, and delete the car when no stock remains for any dealer
+- list cars and stock levels with pagination
+- update stock level for a dealer-owned car
+- search cars by optional make and model filters
 
 All car management endpoints are protected. A dealer can only manage cars that belong to their own account.
 
@@ -29,41 +28,38 @@ All car management endpoints are protected. A dealer can only manage cars that b
 - xUnit
 - FluentAssertions
 - Moq
-- WebApplicationFactory for API integration tests
 
 ## Solution Structure
 
-The main solution lives in [`CarManagement.Solution`](./CarManagement.Solution).
-
-Projects:
+The main solution is in [`CarManagement.Solution`](./CarManagement.Solution).
 
 - `CarManagement.API`
-  - application entry point, endpoint definitions, middleware
+  API entry point, FastEndpoints endpoints, middleware, configuration
 - `CarManagement.Common`
-  - shared constants, helpers, exceptions, auth and swagger extensions
+  shared constants, helpers, exceptions, auth and swagger extensions
 - `CarManagement.DataAccess`
-  - SQLite connection factory and database initialization
+  SQLite connection factory and database initialization
 - `CarManagement.Models`
-  - domain entities such as `Dealer` and `Car`
+  domain entities such as `Dealer`, `Car`, and `CarStock`
 - `CarManagement.Repository`
-  - Dapper-based repository implementations
+  Dapper-based repositories and unit of work pattern implementation
 - `CarManagement.Service`
-  - business logic, DTOs, validators, mapper, JWT token service, user context
+  business logic, DTOs, validators, mappers, JWT token service, and user context
 - `CarManagement.UnitTests`
-  - unit tests for business logic
+  unit tests for business logic
 - `CarManagement.IntegrationTests`
-  - integration tests for API and repository
+  integration tests for API and repository
 
-## Architecture Overview
+## Architecture
 
 The request flow is:
 
-1. HTTP request reaches a FastEndpoints endpoint in `CarManagement.API` layer
-2. DTO validation runs through validators in `CarManagement.Service/Validators`
-3. The endpoint delegates to a service in `CarManagement.Service/Services` layer
-4. The service layer enforces business logic and calls repository to query data
-5. Repository layer execute SQL using Dapper
-6. Results are wrapped in the generic `ApiResponse<T>` response
+1. A request reaches a FastEndpoints endpoint in `CarManagement.API` layer.
+2. Request DTO validation runs through validators in `CarManagement.Service/Validators`.
+3. The endpoint delegates to a service in `CarManagement.Service/Services` layer.
+4. The service layer applies business logic and calls repository to query data.
+5. The repository layer runs SQL queries through Dapper against SQLite.
+6. Responses aare wrapped in the generic ApiResponse<T> response.
 
 Key design points:
 - The RESTful APIs is built using a multi-layered architecture that clearly separates responsibilities across the API, Service, Repository, DataAccess, and Models layers. The API layer is responsible for handling HTTP requests and returning standardized responses, the Service layer implements business logic, the Repository layer uses Dapper for SQL-based data access, the DataAccess layer manages database connections and database initialization, and the Models layer defines domain entities. This separation of concerns significantly improves maintainability and testability. For example, when business logic or query requirements change, I can modify the corresponding layer in isolation without impacting the rest of the system
@@ -71,37 +67,31 @@ Key design points:
 - `UserContext` reads the authenticated dealer id from `HttpContext.User`
 - Global Exception Handler converts exceptions into consistent JSON error responses and provide a fallback mechanism for capturing any unhandled exceptions.
 
-## Features and Business Rules
+## Business Rules
 
 ### Authentication
 
-- registration requires `name`, `email`, and `password`
+- registration requires `name`, `email`, `phoneNumber`, and `password`
 - email is normalized to lowercase before persistence
 - duplicate email registration is rejected
-- login rejects unknown emails and invalid passwords with `401 Unauthorized`
+- login returns `401 Unauthorized` for unknown emails or invalid passwords
 - JWT expiration is controlled by `Jwt:DurationInMinutes`
 
-### Car
+### Cars
 
-- cars are scoped to the authenticated dealer
-- duplicate cars for the same dealer are rejected based on:
-  - `make`
-  - `model`
-  - `year`
-  - `colour`
-- listing is paginated and ordered by `Make`, `Model`, `Year`, `Colour`
-- search is paginated and supports optional `make` and `model` filters
-- search matching is case-insensitive
-- stock level cannot be negative
-- a dealer cannot update or remove another dealer's car
+- all car endpoints require an authenticated dealer
+- add car: Add car and create car stock. If the car already exists, reuse it and create a new car stock for the current dealer. Otherwise, create a new car and a new car stock for the current dealer.
+- remove car: Remove car's stock level. If there is no stock level left for all dealers, remove the car.
+- list cars and stock levels: list cars and stock levels in pagination.
+- update car stock levels: Update car stock level.
+- search car by make and model:  search cars owned by the current dealer with optional make and model filters. The returned reult is in pagination.
 
 ## Prerequisites
 
-Install:
-
 - .NET 9 SDK
+- optional: Docker, for containerized runs
 
-You can verify with:
+Verify your SDK:
 
 ```powershell
 dotnet --version
@@ -117,24 +107,30 @@ dotnet restore
 dotnet build
 ```
 
-### Configure the Application
+## Configuration
 
-Open [`appsettings.json`](./CarManagement.Solution/CarManagement.API/appsettings.json) and make sure the JWT signing key is set to a strong secret:
+Main API settings are in [`CarManagement.Solution/CarManagement.API/appsettings.json`](./CarManagement.Solution/CarManagement.API/appsettings.json):
 
 ```json
-"Jwt": {
-  "SigningKey": "replace-with-a-secure-secret-key",
-  "DurationInMinutes": 60
+{
+  "Database": {
+    "FilePath": "Database/CarManagement.db"
+  },
+  "Jwt": {
+    "SigningKey": "replace-with-a-secure-secret-key",
+    "DurationInMinutes": 60
+  }
 }
 ```
 
-Important:
+Important notes:
 
-- replace the placeholder signing key before running
-- the signing key must not be empty
-- the `DurationInMinutes` must be greater than `0`
+- replace the placeholder JWT signing key before using the app outside local development
+- `Jwt:SigningKey` must not be empty
+- `Jwt:DurationInMinutes` must be greater than `0`
+- For development environment, you can store the `Jwt:SigningKey` and `Jwt:DurationInMinutes` in `appsettings.Development.json`. However, for production environment, please store them securely in a secret management service, such as Azure Key Vault or AWS Secrets Manager, instead of hardcoding them in configuration files.
 
-### Run the API
+## Running the API
 
 From `CarManagement.Solution`:
 
@@ -152,19 +148,47 @@ Swagger UI:
 - `http://localhost:5177/swagger`
 - `https://localhost:7036/swagger`
 
+## Database
+
+The default local SQLite file is:
+
+- [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db)
+
+On startup, the application:
+
+- creates the database directory if needed
+- creates the `Dealers`, `Cars`, and `CarStocks` tables if they do not exist
+- creates the supporting indexes and uniqueness constraints
+- seeds demo dealers and sample stock if they do not already exist
+
+If you want a clean local database, stop the API and delete:
+
+- [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db)
+
+The database will be recreated on the next startup.
+
+## Seed Data
+
+The database initializer seeds these dealer accounts:
+
+- email: `tom@example.com` / password: `Pass123$`
+- email: `jack@example.com` / password: `Pass123$`
+
+It also seeds example stock for `Car`:
+
+- `Toyota Corolla 2022`
+- `Mazda Mazda3 2023`
+- `Honda Civic 2021`
+
 ## Run with Docker
 
-The repository includes a root-level [`Dockerfile`](./Dockerfile) for containerized deployment.
+The repository includes a root-level [`Dockerfile`](./Dockerfile).
 
-### Build the Image
-
-From the repository root:
+Build the image from the repository root:
 
 ```powershell
 docker build -t carmanagement-api .
 ```
-
-### Run the Container
 
 Create a host folder for the SQLite database in your current working directory:
 
@@ -178,12 +202,10 @@ Then run the container with a bind mount:
 docker run --rm -p 8080:8080 --mount type=bind,source="${PWD}\docker-data",target=/app/Database carmanagement-api
 ```
 
-The API will then be available at:
+Container details:
 
-- `http://localhost:8080`
-- `http://localhost:8080/swagger`
-
-### SQLite Location in Docker
+- the API listens on `http://localhost:8080`
+- Swagger is available at `http://localhost:8080/swagger`
 
 Inside the container, SQLite is configured to use:
 
@@ -212,46 +234,6 @@ If you run the container without a bind mount:
 
 - the SQLite file exists only inside that container
 - the data is lost when the container is removed
-
-## Database
-
-The application uses SQLite. The existing database is located in the [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db).
-
-Default database configuration in [`appsettings.json`](./CarManagement.Solution/CarManagement.API/appsettings.json):
-
-```json
-"Database": {
-  "FilePath": "Database/CarManagement.db"
-}
-```
-
-When running the API locally, this resolves to:
-
-- [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db)
-
-On startup, the app automatically:
-
-- creates the database directory if needed
-- creates the `Dealers` table
-- creates the `Cars` table
-- seeds demo dealers if they do not already exist
-
-If you want a clean local database, stop the API and delete:
-
-- [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db)
-
-The database will be recreated automatically on next startup.
-
-## Seeded Demo Accounts
-
-The database initializer seeds these dealer accounts on startup:
-
-- email: `tom@example.com` / password: `Pass123$`
-- email: `jack@example.com` / password: `Pass123$`
-
-These are useful for quick local testing.
-
-## Testing
 
 This solution includes:
 
@@ -333,18 +315,18 @@ For more details, please access `http://localhost:5177/swagger`.
 
 | Method | Route | Auth Required | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/auth/register` | No | Register a new dealer and return a JWT |
+| `POST` | `/api/auth/register` | No | Register a dealer and return a JWT |
 | `POST` | `/api/auth/login` | No | Log in and return a JWT |
 
 ### Cars
 
 | Method | Route | Auth Required | Description |
 | --- | --- | --- | --- |
-| `POST` | `/api/cars` | Yes | Add a car for the current dealer |
+| `POST` | `/api/cars` | Yes | Add a car and create stock for the current dealer |
 | `GET` | `/api/cars` | Yes | List current dealer cars with pagination |
 | `GET` | `/api/cars/search` | Yes | Search current dealer cars by make and model |
-| `PATCH` | `/api/cars/{id}/stock-level` | Yes | Update stock level for a car owned by the current dealer |
-| `DELETE` | `/api/cars/{id}` | Yes | Remove a car owned by the current dealer |
+| `PATCH` | `/api/cars/{id}/stock-level` | Yes | Update stock level for a dealer-owned car |
+| `DELETE` | `/api/cars/{id}` | Yes | Remove the current dealer's stock entry for a car |
 
 ## Example Requests
 
@@ -357,6 +339,7 @@ Content-Type: application/json
 {
   "name": "DealerOne",
   "email": "dealer@example.com",
+  "phoneNumber": "0412345678",
   "password": "Pass123$"
 }
 ```
@@ -384,9 +367,8 @@ Content-Type: application/json
   "make": "Toyota",
   "model": "Corolla",
   "year": 2024,
-  "colour": "Blue",
-  "price": 25000,
-  "stockLevel": 3
+  "stockLevel": 3,
+  "unitPrice": 25000
 }
 ```
 
@@ -428,8 +410,9 @@ Authorization: Bearer <jwt>
 
 ### Register
 
-- `Name` is required and max length is `20`
+- `Name` is required and has a maximum length of `20`
 - `Email` is required and must be valid
+- `PhoneNumber` is required and must be exactly `10` digits
 - `Password` is required and must:
   - be at least `6` characters
   - be at most `20` characters
@@ -447,63 +430,31 @@ Authorization: Bearer <jwt>
 
 - `Make` is required and max length is `50`
 - `Model` is required and max length is `50`
-- `Colour` is required and max length is `50`
-- `Price` must be greater than or equal to `0`
+- `Year` must be greater than `0`
 - `StockLevel` must be greater than or equal to `0`
+- `UnitPrice` must be greater than or equal to `0`
 
 ### List and Search
 
 - `PageNumber` must be greater than `0`
 - `PageSize` must be between `1` and `100`
-- `Make` and `Model` search fields are optional, max length `50`
+- `Make` and `Model` filters are optional and max length is `50`
 
-### Update and Remove
+### Update Stock Level
 
 - `Id` is required
-- `StockLevel` must be greater than or equal to `0` for stock updates
-
-## Useful Commands
-
-Restore packages:
-
-```powershell
-dotnet restore .\CarManagement.Solution\CarManagement.Solution.sln
-```
-
-Build solution:
-
-```powershell
-dotnet build .\CarManagement.Solution\CarManagement.Solution.sln
-```
-
-Run API:
-
-```powershell
-dotnet run --project .\CarManagement.Solution\CarManagement.API
-```
-
-Run Swagger-backed API locally and explore the endpoints in a browser:
-
-- `http://localhost:5177/swagger`
+- `StockLevel` must be greater than or equal to `0`
 
 ## Troubleshooting
 
-### JWT signing key error on startup
+### JWT signing key startup error
 
-If the app throws an error about `Jwt:SigningKey`, update [`appsettings.json`](./CarManagement.Solution/CarManagement.API/appsettings.json) with a non-empty signing key.
+If startup fails with a JWT signing key error, update [`CarManagement.Solution/CarManagement.API/appsettings.json`](./CarManagement.Solution/CarManagement.API/appsettings.json) or pass `Jwt__SigningKey` as an environment variable.
 
-### Database reset
-
-If you want a clean local database, stop the API and delete:
-
-- [`CarManagement.Solution/Database/CarManagement.db`](./CarManagement.Solution/Database/CarManagement.db)
-
-The database will be recreated automatically on next startup.
-
-### Unauthorized requests to car endpoints
+### Unauthorized car requests
 
 Make sure:
 
-- you called `/api/auth/register` or `/api/auth/login` first
+- you registered or logged in first
 - you send `Authorization: Bearer <token>`
 - the token was generated using the same signing key the API is configured to validate
