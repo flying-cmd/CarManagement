@@ -49,12 +49,13 @@ public class AuthService : IAuthService
 
         _logger.LogInformation($"Dealer with id {dealer.Id} login successful");
 
-        return new AuthResponseDto 
+        return new AuthResponseDto
         {
             Name = dealer.Name,
-            Email = dealer.Email, 
-            AccessToken = jwtToken, 
-            ExpiresAtUtc = expiresAt 
+            Email = dealer.Email,
+            PhoneNumber = dealer.PhoneNumber,
+            AccessToken = jwtToken,
+            ExpiresAtUtc = expiresAt
         };
     }
 
@@ -69,6 +70,7 @@ public class AuthService : IAuthService
     {
         var normalizedName = req.Name.Trim();
         var normalizedEmail = req.Email.Trim().ToLowerInvariant();
+        var normalizedPhoneNumber = req.PhoneNumber.Trim();
 
         // Check if email already exists
         var existingDealer = await _dealerRepository.GetDealerByEmailAsync(normalizedEmail, ct);
@@ -79,7 +81,7 @@ public class AuthService : IAuthService
         }
 
         // Create new dealer
-        var dealer = Dealer.CreateDealer(normalizedName, normalizedEmail, req.Password, _passwordHasher);
+        var dealer = Dealer.CreateDealer(normalizedName, normalizedEmail, normalizedPhoneNumber, req.Password, _passwordHasher);
 
         await _dealerRepository.AddDealerAsync(dealer, ct);
 
@@ -92,6 +94,7 @@ public class AuthService : IAuthService
         {
             Name = dealer.Name,
             Email = dealer.Email,
+            PhoneNumber = dealer.PhoneNumber,
             AccessToken = jwtToken,
             ExpiresAtUtc = expiresAt
         };

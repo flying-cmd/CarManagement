@@ -13,6 +13,11 @@ public sealed class AuthResponseDto
     public string Email { get; set; } = null!;
 
     /// <summary>
+    /// The phone number of the user.
+    /// </summary>
+    public string PhoneNumber { get; set; } = null!;
+
+    /// <summary>
     /// The access token of the user.
     /// </summary>
     public string AccessToken { get; set; } = null!;
