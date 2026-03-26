@@ -14,37 +14,35 @@ public sealed class DealerRepositoryIntegrationTests : IClassFixture<RepositoryT
     }
 
     [Fact]
-    public async Task AddDealerAsync_ShouldAddDealer()
+    public async Task AddDealerAsync_ShouldPersistDealer()
     {
         // Arrange
         var dealer = Dealer.CreateDealer(
-            name: "DealerOne",
-            email: $"dealer.{Guid.NewGuid():N}@example.com",
-            plainPassword: "Pass123$",
-            passwordHasher: _fixture.PasswordHasher);
+            "DealerOne",
+            $"dealer.{Guid.NewGuid():N}@example.com",
+            "0412345678",
+            "Pass123$",
+            _fixture.PasswordHasher);
 
         // Act
         await _fixture.DealerRepository.AddDealerAsync(dealer, CancellationToken.None);
 
         // Assert
         var loaded = await _fixture.DealerRepository.GetDealerByEmailAsync(dealer.Email, CancellationToken.None);
+
         loaded.Should().NotBeNull();
         loaded!.Id.Should().Be(dealer.Id);
         loaded.Name.Should().Be(dealer.Name);
         loaded.Email.Should().Be(dealer.Email);
+        loaded.PhoneNumber.Should().Be(dealer.PhoneNumber);
+        loaded.PasswordHash.Should().Be(dealer.PasswordHash);
     }
 
     [Fact]
-    public async Task GetDealerByIdAsync_ShouldGetDealer()
+    public async Task GetDealerByIdAsync_ShouldReturnDealer()
     {
         // Arrange
-        var dealer = Dealer.CreateDealer(
-            name: "DealerOne",
-            email: $"dealer.{Guid.NewGuid():N}@example.com",
-            plainPassword: "Pass123$",
-            passwordHasher: _fixture.PasswordHasher);
-
-        await _fixture.DealerRepository.AddDealerAsync(dealer, CancellationToken.None);
+        var dealer = await _fixture.CreateDealerAsync();
 
         // Act
         var result = await _fixture.DealerRepository.GetDealerByIdAsync(dealer.Id, CancellationToken.None);
@@ -54,19 +52,14 @@ public sealed class DealerRepositoryIntegrationTests : IClassFixture<RepositoryT
         result!.Id.Should().Be(dealer.Id);
         result.Name.Should().Be(dealer.Name);
         result.Email.Should().Be(dealer.Email);
+        result.PhoneNumber.Should().Be(dealer.PhoneNumber);
     }
 
     [Fact]
-    public async Task GetDealerByEmailAsync_ShouldGetDealer()
+    public async Task GetDealerByEmailAsync_ShouldReturnDealer()
     {
         // Arrange
-        var dealer = Dealer.CreateDealer(
-            name: "DealerOne",
-            email: $"dealer.{Guid.NewGuid():N}@example.com",
-            plainPassword: "Pass123$",
-            passwordHasher: _fixture.PasswordHasher);
-
-        await _fixture.DealerRepository.AddDealerAsync(dealer, CancellationToken.None);
+        var dealer = await _fixture.CreateDealerAsync();
 
         // Act
         var result = await _fixture.DealerRepository.GetDealerByEmailAsync(dealer.Email, CancellationToken.None);
@@ -76,5 +69,6 @@ public sealed class DealerRepositoryIntegrationTests : IClassFixture<RepositoryT
         result!.Id.Should().Be(dealer.Id);
         result.Name.Should().Be(dealer.Name);
         result.Email.Should().Be(dealer.Email);
+        result.PhoneNumber.Should().Be(dealer.PhoneNumber);
     }
 }

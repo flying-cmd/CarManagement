@@ -66,6 +66,7 @@ public sealed class CarManagementWebApplicationFactory : WebApplicationFactory<P
     public async Task<RegisteredDealer> RegisterDealerAsync(
         string? name = null,
         string? email = null,
+        string? phoneNumber = null,
         string? password = null)
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
@@ -73,6 +74,7 @@ public sealed class CarManagementWebApplicationFactory : WebApplicationFactory<P
         {
             Name = name ?? $"Dealer{suffix}",
             Email = email ?? $"dealer.{suffix}@example.com",
+            PhoneNumber = phoneNumber ?? $"04{Random.Shared.Next(0, 100000000):D8}",
             Password = password ?? "Pass123$"
         };
 
@@ -88,8 +90,9 @@ public sealed class CarManagementWebApplicationFactory : WebApplicationFactory<P
         }
 
         return new RegisteredDealer(
-            request.Name,
-            request.Email,
+            body.Data.Name,
+            body.Data.Email,
+            body.Data.PhoneNumber,
             request.Password,
             body.Data.AccessToken);
     }
@@ -102,16 +105,12 @@ public sealed class CarManagementWebApplicationFactory : WebApplicationFactory<P
     /// <returns>Returns a task that represents the asynchronous operation.</returns>
     private async Task CleanupAsync()
     {
-        // Mark the object as disposed
         if (Interlocked.Exchange(ref _disposed, 1) == 1)
         {
             return;
         }
 
-        // Dispose the WebApplicationFactory
         await base.DisposeAsync();
-
-        // Delete the test database file
         await DeleteDirectoryWithRetryAsync(_databaseDirectory);
     }
 
@@ -173,5 +172,6 @@ public sealed class CarManagementWebApplicationFactory : WebApplicationFactory<P
 public sealed record RegisteredDealer(
     string Name,
     string Email,
+    string PhoneNumber,
     string Password,
     string AccessToken);

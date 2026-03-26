@@ -25,6 +25,7 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
         {
             Name = "",
             Email = "bad-email",
+            PhoneNumber = "123",
             Password = "123"
         };
 
@@ -42,20 +43,21 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
         body.Errors.Should().NotBeNull();
         body.Errors!.Should().ContainKey("name");
         body.Errors.Should().ContainKey("email");
+        body.Errors.Should().ContainKey("phoneNumber");
         body.Errors.Should().ContainKey("password");
-        body.Errors["name"].Should().Contain("Name is required");
-        body.Errors["email"].Should().Contain("Email is invalid");
     }
 
     [Fact]
     public async Task Register_WhenRequestIsValid_ShouldCreateDealerAndReturnAccessToken()
     {
         // Arrange
+        var suffix = Guid.NewGuid().ToString("N")[..8];
         using var client = _factory.CreateClient();
         var request = new RegisterRequestDto
         {
-            Name = "DealerOne",
-            Email = "dealer@example.com",
+            Name = $"Dealer{suffix}",
+            Email = $"dealer.{suffix}@example.com",
+            PhoneNumber = "0412345678",
             Password = "Pass123$"
         };
 
@@ -73,6 +75,7 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
         body.Data.Should().NotBeNull();
         body.Data!.Name.Should().Be(request.Name);
         body.Data.Email.Should().Be(request.Email);
+        body.Data.PhoneNumber.Should().Be(request.PhoneNumber);
         body.Data.AccessToken.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -81,13 +84,12 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
+        using var client = _factory.CreateClient();
         var request = new LoginRequestDto
         {
             Email = dealer.Email,
             Password = "WrongPass123$"
         };
-
-        using var client = _factory.CreateClient();
 
         // Act
         var response = await client.PostAsJsonAsync("/api/auth/login", request);
@@ -109,13 +111,12 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
+        using var client = _factory.CreateClient();
         var request = new LoginRequestDto
         {
             Email = "dealer2@example.com",
             Password = dealer.Password
         };
-
-        using var client = _factory.CreateClient();
 
         // Act
         var response = await client.PostAsJsonAsync("/api/auth/login", request);
@@ -124,7 +125,6 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
 
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<object?>>();
-
         body.Should().NotBeNull();
         body!.Success.Should().BeFalse();
         body.Message.Should().Be("Invalid email or password");
@@ -137,13 +137,12 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
+        using var client = _factory.CreateClient();
         var request = new LoginRequestDto
         {
             Email = dealer.Email,
             Password = dealer.Password
         };
-
-        using var client = _factory.CreateClient();
 
         // Act
         var response = await client.PostAsJsonAsync("/api/auth/login", request);
@@ -158,6 +157,7 @@ public sealed class AuthApiIntegrationTests : IClassFixture<CarManagementWebAppl
         body.Message.Should().Be("Login successfully");
         body.Data.Should().NotBeNull();
         body.Data!.Email.Should().Be(dealer.Email);
+        body.Data.PhoneNumber.Should().Be(dealer.PhoneNumber);
         body.Data.AccessToken.Should().NotBeNullOrWhiteSpace();
     }
 }

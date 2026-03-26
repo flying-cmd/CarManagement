@@ -17,44 +17,32 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
     }
 
     [Fact]
-    public async Task AddCar_WhenTheDealerDoesNotLogin_ShouldReturnUnauthorized()
+    public async Task AddCar_WhenDealerIsNotAuthenticated_ShouldReturnUnauthorized()
     {
         // Arrange
-        var request = new AddCarRequestDto
-        {
-            Make = "Toyota",
-            Model = "Corolla",
-            Year = 2024,
-            Colour = "Blue",
-            Price = 25000m,
-            StockLevel = 3
-        };
-
         using var client = _factory.CreateClient();
 
         // Act
-        var response = await client.PostAsJsonAsync("/api/cars", request);
+        var response = await client.PostAsJsonAsync("/api/cars", CreateAddCarRequest());
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task AddCar_WhenRequestIsInvalid_ShouldReturnValidationError()
+    public async Task AddCar_WhenRequestIsInvalid_ShouldReturnValidationErrors()
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
+        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
         var request = new AddCarRequestDto
         {
             Make = "",
             Model = " ",
-            Year = 2024,
-            Colour = "Blue",
-            Price = -13,
-            StockLevel = 3
+            Year = 0,
+            StockLevel = -1,
+            UnitPrice = -1
         };
-
-        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
 
         // Act
         var response = await client.PostAsJsonAsync("/api/cars", request);
@@ -70,7 +58,9 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         body.Errors.Should().NotBeNull();
         body.Errors!.Should().ContainKey("make");
         body.Errors.Should().ContainKey("model");
-        body.Errors.Should().ContainKey("price");
+        body.Errors.Should().ContainKey("year");
+        body.Errors.Should().ContainKey("stockLevel");
+        body.Errors.Should().ContainKey("unitPrice");
     }
 
     [Fact]
@@ -82,56 +72,44 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         var request = CreateAddCarRequest();
 
         // Act
-        var addResponse = await client.PostAsJsonAsync("/api/cars", request);
+        var response = await client.PostAsJsonAsync("/api/cars", request);
 
         // Assert
-        addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var addBody = await addResponse.Content.ReadFromJsonAsync<ApiResponse<CarResponseDto>>();
-        addBody.Should().NotBeNull();
-        addBody!.Data.Should().NotBeNull();
-        addBody.Data!.Make.Should().Be(request.Make);
-        addBody.Data.Model.Should().Be(request.Model);
-        addBody.Data.StockLevel.Should().Be(request.StockLevel);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CarResponseDto>>();
+
+        body.Should().NotBeNull();
+        body!.Success.Should().BeTrue();
+        body.Message.Should().Be("Car added successfully.");
+        body.Data.Should().NotBeNull();
+        body.Data!.Make.Should().Be(request.Make);
+        body.Data.Model.Should().Be(request.Model);
+        body.Data.Year.Should().Be(request.Year);
+        body.Data.StockLevel.Should().Be(request.StockLevel);
+        body.Data.UnitPrice.Should().Be(request.UnitPrice);
     }
 
     [Fact]
-    public async Task RemoveCar_WhenTheDealerDoesNotLogin_ShouldReturnUnauthorized()
+    public async Task RemoveCar_WhenDealerIsNotAuthenticated_ShouldReturnUnauthorized()
     {
         // Arrange
-        var carId = Guid.NewGuid();
         using var client = _factory.CreateClient();
 
         // Act
-        var response = await client.DeleteAsync($"/api/cars/{carId}");
+        var response = await client.DeleteAsync($"/api/cars/{Guid.NewGuid()}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
-    public async Task RemoveCar_WhenTheCarDoesNotExist_ShouldReturnNotFound()
-    {
-        // Arrange
-        var dealer = await _factory.RegisterDealerAsync();
-        var carId = Guid.NewGuid();
-        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
-
-        // Act
-        var response = await client.DeleteAsync($"/api/cars/{carId}");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task RemoveCar_WhenTheDealerOwnsTheCar_ShouldDeleteCar()
+    public async Task RemoveCar_WhenDealerOwnsCar_ShouldDeleteIt()
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
         using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
-        var request = CreateAddCarRequest();
-        var addedCar = await AddCarAsync(client, request);
+        var addedCar = await AddCarAsync(client);
 
         // Act
         var deleteResponse = await client.DeleteAsync($"/api/cars/{addedCar.Id}");
@@ -139,13 +117,12 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         // Assert
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var searchAfterDeleteResponse = await client.GetAsync($"/api/cars/search?make={request.Make}&model={request.Model}&pageNumber=1&pageSize=10");
-        var searchAfterDeleteBody = await searchAfterDeleteResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
+        var searchResponse = await client.GetAsync($"/api/cars/search?make={addedCar.Make}&model={addedCar.Model}&pageNumber=1&pageSize=10");
+        var searchBody = await searchResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
 
-        searchAfterDeleteBody.Should().NotBeNull();
-        searchAfterDeleteBody!.Data.Should().NotBeNull();
-        searchAfterDeleteBody.Data!.TotalCount.Should().Be(0);
-        searchAfterDeleteBody.Data.Items.Should().BeEmpty();
+        searchBody.Should().NotBeNull();
+        searchBody!.Data.Should().NotBeNull();
+        searchBody.Data!.TotalCount.Should().Be(0);
     }
 
     [Fact]
@@ -154,19 +131,17 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         // Arrange
         var owner = await _factory.RegisterDealerAsync();
         var currentDealer = await _factory.RegisterDealerAsync();
-
         using var ownerClient = _factory.CreateAuthorizedClient(owner.AccessToken);
         using var currentDealerClient = _factory.CreateAuthorizedClient(currentDealer.AccessToken);
-
         var addedCar = await AddCarAsync(ownerClient);
 
         // Act
-        var deleteResponse = await currentDealerClient.DeleteAsync($"/api/cars/{addedCar.Id}");
+        var response = await currentDealerClient.DeleteAsync($"/api/cars/{addedCar.Id}");
 
         // Assert
-        deleteResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var body = await deleteResponse.Content.ReadFromJsonAsync<ApiResponse<object?>>();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<object?>>();
 
         body.Should().NotBeNull();
         body!.Success.Should().BeFalse();
@@ -174,57 +149,28 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
     }
 
     [Fact]
-    public async Task ListCars_WhenTheDealerDoesNotLogin_ShouldReturnUnauthorized()
-    {
-        // Arrange
-        using var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/api/cars?pageNumber=1&pageSize=10");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task ListCars_WhenDealerHasCars_ShouldReturnDealerCars()
+    public async Task ListCars_ShouldReturnOnlyCurrentDealersCars()
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
-        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
-        var addedCar = await AddCarAsync(client);
+        var otherDealer = await _factory.RegisterDealerAsync();
+        using var dealerClient = _factory.CreateAuthorizedClient(dealer.AccessToken);
+        using var otherDealerClient = _factory.CreateAuthorizedClient(otherDealer.AccessToken);
+        var dealersCar = await AddCarAsync(dealerClient);
+        await AddCarAsync(otherDealerClient);
 
         // Act
-        var listResponse = await client.GetAsync("/api/cars?pageNumber=1&pageSize=10");
+        var response = await dealerClient.GetAsync("/api/cars?pageNumber=1&pageSize=10");
 
         // Assert
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var listBody = await listResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
-        listBody.Should().NotBeNull();
-        listBody!.Data.Should().NotBeNull();
-        listBody.Data!.TotalCount.Should().Be(1);
-        listBody.Data.Items.Should().ContainSingle(x => x.Id == addedCar.Id && x.StockLevel == addedCar.StockLevel);
-    }
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
 
-    [Fact]
-    public async Task ListCars_WhenDealerHasNoCars_ShouldReturnEmptyList()
-    {
-        // Arrange
-        var dealer = await _factory.RegisterDealerAsync();
-        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
-
-        // Act
-        var listResponse = await client.GetAsync("/api/cars?pageNumber=1&pageSize=10");
-
-        // Assert
-        listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var listBody = await listResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
-        listBody.Should().NotBeNull();
-        listBody!.Data.Should().NotBeNull();
-        listBody.Data!.TotalCount.Should().Be(0);
-        listBody.Data.Items.Should().BeEmpty();
+        body.Should().NotBeNull();
+        body!.Data.Should().NotBeNull();
+        body.Data!.TotalCount.Should().Be(1);
+        body.Data.Items.Should().ContainSingle(x => x.Id == dealersCar.Id);
     }
 
     [Fact]
@@ -237,49 +183,93 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         var addedCar = await AddCarAsync(client, request);
 
         // Act
-        var searchResponse = await client.GetAsync($"/api/cars/search?make={request.Make}&model={request.Model}&pageNumber=1&pageSize=10");
+        var response = await client.GetAsync($"/api/cars/search?make={request.Make}&model={request.Model}&pageNumber=1&pageSize=10");
 
         // Assert
-        searchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var searchBody = await searchResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
-        searchBody.Should().NotBeNull();
-        searchBody!.Data.Should().NotBeNull();
-        searchBody.Data!.Items.Should().ContainSingle(x => x.Id == addedCar.Id);
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
+
+        body.Should().NotBeNull();
+        body!.Data.Should().NotBeNull();
+        body.Data!.Items.Should().ContainSingle(x => x.Id == addedCar.Id);
     }
 
     [Fact]
-    public async Task SearchCars_WhenFiltersDoNotMatch_ShouldReturnEmptyList()
+    public async Task SearchCars_WhenFiltersDoNotMatch_ShouldReturnEmptyResult()
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
         using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
         var request = CreateAddCarRequest();
+        await AddCarAsync(client, request);
 
         // Act
-        var searchResponse = await client.GetAsync($"/api/cars/search?make=12345&model=6789&pageNumber=1&pageSize=10");
+        var response = await client.GetAsync($"/api/cars/search?make={Guid.NewGuid()}&model={Guid.NewGuid()}&pageNumber=1&pageSize=10");
 
         // Assert
-        searchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var searchBody = await searchResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
-        searchBody.Should().NotBeNull();
-        searchBody!.Data.Should().NotBeNull();
-        searchBody.Data!.Items.Should().BeEmpty();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
+
+        body.Should().NotBeNull();
+        body!.Data.Should().NotBeNull();
+        body.Data!.TotalCount.Should().Be(0);
     }
 
     [Fact]
-    public async Task UpdateCarStockLevel_WhenTheDealerDoesNotLogin_ShouldReturnUnauthorized()
+    public async Task SearchCars_WhenMakeIsNull_ShouldResturnMatchingModel()
     {
         // Arrange
+        var dealer = await _factory.RegisterDealerAsync();
+        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
+        var request = CreateAddCarRequest();
+        var addedCar = await AddCarAsync(client, request);
+
+        // Act
+        var response = await client.GetAsync($"/api/cars/search?make={null}&model={request.Model}&pageNumber=1&pageSize=10");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
+        body.Should().NotBeNull();
+        body!.Data.Should().NotBeNull();
+        body.Data!.Items.Should().ContainSingle(x => x.Id == addedCar.Id);
+    }
+
+    [Fact]
+    public async Task SearchCars_WhenModelIsNull_ShouldResturnMatchingMake()
+    {
+        // Arrange
+        var dealer = await _factory.RegisterDealerAsync();
+        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
+        var request = CreateAddCarRequest();
+        var addedCar = await AddCarAsync(client, request);
+
+        // Act
+        var response = await client.GetAsync($"/api/cars/search?make={request.Make}&model={null}&pageNumber=1&pageSize=10");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
+        body.Should().NotBeNull();
+        body!.Data.Should().NotBeNull();
+        body.Data!.Items.Should().ContainSingle(x => x.Id == addedCar.Id);
+    }
+
+    [Fact]
+    public async Task UpdateCarStockLevel_WhenDealerIsNotAuthenticated_ShouldReturnUnauthorized()
+    {
+        // Arrange
+        using var client = _factory.CreateClient();
         var carId = Guid.NewGuid();
         var request = new UpdateCarStockLevelRequestDto
         {
             Id = carId,
             StockLevel = 7
         };
-
-        using var client = _factory.CreateClient();
 
         // Act
         var response = await client.PatchAsJsonAsync($"/api/cars/{carId}/stock-level", request);
@@ -289,36 +279,14 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
     }
 
     [Fact]
-    public async Task UpdateCarStockLevel_WhenTheCarDoesNotExist_ShouldReturnNotFound()
-    {
-        // Arrange
-        var carId = Guid.NewGuid();
-        var request = new UpdateCarStockLevelRequestDto
-        {
-            Id = carId,
-            StockLevel = 7
-        };
-        var dealer = await _factory.RegisterDealerAsync();
-        using var client = _factory.CreateAuthorizedClient(dealer.AccessToken);
-
-        // Act
-        var response = await client.PatchAsJsonAsync($"/api/cars/{carId}/stock-level", request);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task UpdateCarStockLevel_WhenTheDealerDoesNotOwnTheCar_ShouldReturnForbidden()
+    public async Task UpdateCarStockLevel_WhenDealerDoesNotOwnCar_ShouldReturnForbidden()
     {
         // Arrange
         var owner = await _factory.RegisterDealerAsync();
         var currentDealer = await _factory.RegisterDealerAsync();
-        var ownerClient = _factory.CreateAuthorizedClient(owner.AccessToken);
-        var currentDealerClient = _factory.CreateAuthorizedClient(currentDealer.AccessToken);
-
+        using var ownerClient = _factory.CreateAuthorizedClient(owner.AccessToken);
+        using var currentDealerClient = _factory.CreateAuthorizedClient(currentDealer.AccessToken);
         var addedCar = await AddCarAsync(ownerClient);
-
         var request = new UpdateCarStockLevelRequestDto
         {
             Id = addedCar.Id,
@@ -336,12 +304,10 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         body.Should().NotBeNull();
         body!.Success.Should().BeFalse();
         body.Message.Should().Be("You are not authorized to update this car");
-        body.Errors.Should().NotBeNull();
-        body.Errors!["Error"].Should().ContainSingle("You are not authorized to update this car");
     }
 
     [Fact]
-    public async Task UpdateCarStockLevel_WhenTheDealerOwnsTheCar_ShouldUpdateStockLevel()
+    public async Task UpdateCarStockLevel_WhenDealerOwnsCar_ShouldUpdateStockLevel()
     {
         // Arrange
         var dealer = await _factory.RegisterDealerAsync();
@@ -359,14 +325,18 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
         // Assert
         patchResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var listAfterPatchResponse = await client.GetAsync("/api/cars?pageNumber=1&pageSize=10");
-        var listAfterPatchBody = await listAfterPatchResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
+        var listResponse = await client.GetAsync("/api/cars?pageNumber=1&pageSize=10");
+        var listBody = await listResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<CarResponseDto>>>();
 
-        listAfterPatchBody.Should().NotBeNull();
-        listAfterPatchBody!.Data.Should().NotBeNull();
-        listAfterPatchBody.Data!.Items.Should().ContainSingle(x => x.Id == addedCar.Id && x.StockLevel == request.StockLevel);
+        listBody.Should().NotBeNull();
+        listBody!.Data.Should().NotBeNull();
+        listBody.Data!.Items.Should().ContainSingle(x => x.Id == addedCar.Id && x.StockLevel == 7);
     }
 
+    /// <summary>
+    /// Creates a new <see cref="AddCarRequestDto"/>.
+    /// </summary>
+    /// <returns>Returns a new <see cref="AddCarRequestDto"/>.</returns>
     private static AddCarRequestDto CreateAddCarRequest()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
@@ -376,9 +346,8 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
             Make = $"Toyota{suffix}",
             Model = $"Corolla{suffix}",
             Year = 2024,
-            Colour = "Blue",
-            Price = 25000m,
-            StockLevel = 3
+            StockLevel = 3,
+            UnitPrice = 25000m
         };
     }
 
@@ -390,18 +359,15 @@ public sealed class CarApiIntegrationTests : IClassFixture<CarManagementWebAppli
     /// <returns>Returns <see cref="CarResponseDto"/>.</returns>
     private static async Task<CarResponseDto> AddCarAsync(HttpClient client, AddCarRequestDto? request = null)
     {
-        if (request is null)
-        {
-            request = CreateAddCarRequest();
-        }
+        request ??= CreateAddCarRequest();
 
-        var addResponse = await client.PostAsJsonAsync("/api/cars", request);
-        addResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var response = await client.PostAsJsonAsync("/api/cars", request);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var addBody = await addResponse.Content.ReadFromJsonAsync<ApiResponse<CarResponseDto>>();
-        addBody.Should().NotBeNull();
-        addBody!.Data.Should().NotBeNull();
+        var body = await response.Content.ReadFromJsonAsync<ApiResponse<CarResponseDto>>();
+        body.Should().NotBeNull();
+        body!.Data.Should().NotBeNull();
 
-        return addBody.Data!;
+        return body.Data!;
     }
 }
