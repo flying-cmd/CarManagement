@@ -16,21 +16,24 @@ public class CarService : ICarService
     private readonly IDealerRepository _dealerRepository;
     private readonly ILogger<CarService> _logger;
     private readonly CarMapper _carMapper;
+    private readonly IUnitOfWork _unitOfWork;
 
     public CarService(
         ICarRepository carRepository,
         IDealerRepository dealerRepository,
         ILogger<CarService> logger,
-        CarMapper carMapper)
+        CarMapper carMapper,
+        IUnitOfWork unitOfWork)
     {
         _carRepository = carRepository;
         _dealerRepository = dealerRepository;
         _logger = logger;
         _carMapper = carMapper;
+        _unitOfWork = unitOfWork;
     }
 
     /// <summary>
-    /// Add car.
+    /// Add car and create car stock.
     /// </summary>
     /// <param name="req">The add car request <see cref="AddCarRequestDto"/>.</param>
     /// <param name="dealerId">The dealer id.</param>
@@ -38,35 +41,83 @@ public class CarService : ICarService
     /// <returns>Returns <see cref="CarResponseDto"/> if successful.</returns>
     /// <exception cref="ApiException.Unauthorized(string)">Thrown if dealer does not exist.</exception>
     /// <exception cref="ApiException.BadRequest(string)">Thrown if car already exists.</exception>
+    /// <exception cref="ApiException.InternalServerError(string)">Thrown if internal server error.</exception>
     public async Task<CarResponseDto> AddCarAsync(AddCarRequestDto req, Guid dealerId, CancellationToken ct)
     {
         var make = req.Make.Trim();
         var model = req.Model.Trim();
-        var colour = req.Colour.Trim();
 
-        // Check if dealer exists
-        var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
-        if (dealer is null)
+        await _unitOfWork.BeginTransactionAsync(ct);
+
+        try
         {
-            _logger.LogError("Add Car Failed: Unauthorized. Dealer not found");
-            throw ApiException.Unauthorized("Unauthorized");
-        }
+            // Check if dealer exists
+            var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+            if (dealer is null)
+            {
+                _logger.LogError("Add Car Failed: Unauthorized. Dealer not found");
+                throw ApiException.Unauthorized("Unauthorized");
+            }
 
-        // Check if car already exists
-        if (await _carRepository.ExistsAsync(dealerId, make, model, req.Year, colour, ct))
+            // Check if car already exists
+            var existingCar = await _carRepository.GetByMakeModelYearAsync(make, model, req.Year, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+            if (existingCar is not null)
+            {
+                _logger.LogError("Add Car Failed: Car already exists");
+                throw ApiException.BadRequest("Car already exists");
+            }
+
+            // Add car
+            var car = new Car(make, model, req.Year);
+            var result = await _carRepository.AddCarAsync(car, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+
+            if (!result)
+            {
+                _logger.LogError("Add Car Failed: Internal server error");
+                throw ApiException.InternalServerError("Internal server error");
+            }
+
+            // Create car stock
+            var carStock = new CarStock(dealerId, car.Id, req.StockLevel, req.UnitPrice);
+            var addedCarStockResult = await _carRepository.AddCarStockAsync(carStock, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+
+            if (!addedCarStockResult)
+            {
+                _logger.LogError("Add Car Failed: Internal server error");
+                throw ApiException.InternalServerError("Internal server error");
+            }
+
+            await _unitOfWork.CommitAsync(ct);
+
+            var addedCar = new CarResponseDto
+            {
+                Id = car.Id,
+                DealerId = dealerId,
+                CarStockId = carStock.Id,
+                Make = car.Make,
+                Model = car.Model,
+                Year = car.Year,
+                StockLevel = carStock.StockLevel,
+                UnitPrice = carStock.UnitPrice,
+                CreatedAt = car.CreatedAt,
+                StockUpdatedAt = carStock.UpdatedAt
+            };
+
+            _logger.LogInformation("Car added successfully and car stock created successfully");
+
+            return addedCar;
+        }
+        catch (ApiException)
         {
-            _logger.LogError("Add Car Failed: Car already exists");
-            throw ApiException.BadRequest("Car already exists");
+            await _unitOfWork.RollbackAsync(ct);
+            throw;
         }
-
-        // Add car
-        var car = new Car(dealerId, make, model, req.Year, colour, req.Price, req.StockLevel);
-
-        await _carRepository.AddCarAsync(car, ct);
-
-        _logger.LogInformation("Car added successfully");
-
-        return _carMapper.FromEntity(car);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Add Car Failed: Internal server error");
+            await _unitOfWork.RollbackAsync(ct);
+            throw;
+        }
     }
 
     /// <summary>
@@ -102,7 +153,7 @@ public class CarService : ICarService
     }
 
     /// <summary>
-    /// Remove car.
+    /// Remove car's stock level. If there is no stock level left for all dealers, remove the car.
     /// </summary>
     /// <param name="id">The id of the car.</param>
     /// <param name="dealerId">The id of the dealer.</param>
@@ -113,39 +164,71 @@ public class CarService : ICarService
     /// <exception cref="ApiException.Forbidden(string)">Thrown if the car does not belong to the dealer.</exception>
     public async Task RemoveCarByIdAsync(Guid id, Guid dealerId, CancellationToken ct)
     {
-        // Check if the dealer exists
-        var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
-        if (dealer is null)
+        await _unitOfWork.BeginTransactionAsync(ct);
+
+        try
         {
-            _logger.LogError("Remove Car Failed: Unauthorized. Dealer not found");
-            throw ApiException.Unauthorized("Unauthorized");
-        }
+            // Check if the dealer exists
+            var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+            if (dealer is null)
+            {
+                _logger.LogError("Remove Car Failed: Unauthorized. Dealer not found");
+                throw ApiException.Unauthorized("Unauthorized");
+            }
 
-        // Check if the car exists
-        var car = await _carRepository.GetCarByIdAsync(id, ct);
-        if (car is null)
+            // Check if the car exists
+            var car = await _carRepository.GetCarByIdAsync(id, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+            if (car is null)
+            {
+                _logger.LogError("Remove Car Failed: Car not found");
+                throw ApiException.NotFound("Car not found");
+            }
+
+            // Check if the car belongs to the dealer
+            if(!await _carRepository.ExistsAsync(dealerId, id, ct, _unitOfWork.Connection, _unitOfWork.Transaction))
+            {
+                _logger.LogError("Remove Car Failed: Car {CarId} does not belong to the dealer {DealerId}", car.Id, dealerId);
+                throw ApiException.Forbidden("You are not authorized to remove this car");
+            }
+
+            // Remove car's stock level
+            var result = await _carRepository.RemoveCarStockAsync(dealerId, id, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+
+            if (!result)
+            {
+                _logger.LogError("Remove Car Failed: Car not found");
+                throw ApiException.NotFound("Car not found");
+            }
+
+            _logger.LogInformation("Car's stock removed successfully by dealer {Dealer}", dealerId);
+
+            // Remove car if there is no stock left for this car for all dealers
+            if (!await _carRepository.ExistsAsync(id, ct, _unitOfWork.Connection, _unitOfWork.Transaction))
+            {
+                var removedCar = await _carRepository.RemoveCarByIdAsync(id, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+                if (!removedCar)
+                {
+                    _logger.LogError("Remove Car Failed: Car not found");
+                    throw ApiException.NotFound("Car not found");
+                }
+
+                _logger.LogInformation("Car removed successfully");
+            }
+
+            await _unitOfWork.CommitAsync(ct);
+        }
+        catch (ApiException)
         {
-            _logger.LogError("Remove Car Failed: Car not found");
-            throw ApiException.NotFound("Car not found");
+            await _unitOfWork.RollbackAsync(ct);
+            throw;
         }
-
-        // Check if the car belongs to the dealer
-        if (car.DealerId != dealerId)
+        catch (Exception ex)
         {
-            _logger.LogError("Remove Car Failed: Car does not belong to the dealer");
-            throw ApiException.Forbidden("You are not authorized to remove this car");
+            _logger.LogError(ex, "Remove Car Failed: Internal server error");
+            await _unitOfWork.RollbackAsync(ct);
+            throw;
         }
-
-        // Remove car
-        var result = await _carRepository.RemoveCarByIdAsync(id, ct);
-
-        if (!result)
-        {
-            _logger.LogError("Remove Car Failed: Car not found");
-            throw ApiException.NotFound("Car not found");
-        }
-
-        _logger.LogInformation("Car removed successfully");
+        
     }
 
     /// <summary>
@@ -162,13 +245,13 @@ public class CarService : ICarService
         var dealer = await _dealerRepository.GetDealerByIdAsync(dealerId, ct);
         if (dealer is null)
         {
-            _logger.LogError("Remove Car Failed: Unauthorized. Dealer not found");
+            _logger.LogError("Search Cars Failed: Unauthorized. Dealer not found");
             throw ApiException.Unauthorized("Unauthorized");
         }
-    
+
         // Search cars
         var cars = await _carRepository.SearchCarsAsync(dealerId, req.Make?.Trim(), req.Model?.Trim(), req.PageNumber, req.PageSize, ct);
-    
+
         _logger.LogInformation("Cars searched successfully");
 
         return new PagedResult<CarResponseDto>
@@ -210,14 +293,14 @@ public class CarService : ICarService
         }
 
         // Check if the car belongs to the dealer
-        if (car.DealerId != dealerId)
+        if (!await _carRepository.ExistsAsync(dealerId, id, ct))
         {
-            _logger.LogError("Update Car Stock Level Failed: Car does not belong to the dealer");
+            _logger.LogError("Update Car Stock Level Failed: Car {CarId} does not belong to the dealer {DealerId}", car.Id, dealerId);
             throw ApiException.Forbidden("You are not authorized to update this car");
         }
 
         // Update car stock level
-        var result = await _carRepository.UpdateCarStockLevelByIdAsync(id, stockLevel, ct);
+        var result = await _carRepository.UpdateCarStockLevelAsync(id, dealerId, stockLevel, ct);
 
         if (!result)
         {
