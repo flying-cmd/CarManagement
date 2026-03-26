@@ -31,7 +31,7 @@ public class DatabaseInitializer
             Directory.CreateDirectory(directory);
         }
 
-        using var connection = _sqliteConnectionFactory.CreateConnection();
+        using var connection = await _sqliteConnectionFactory.CreateConnectionAsync();
 
         // Create the schema
         var schemaSql = """

@@ -25,15 +25,19 @@ public class SqliteConnectionFactory
         }.ToString();
     }
 
-    public SqliteConnection CreateConnection()
+    /// <summary>
+    /// Creates and opens a SQLite connection asynchronously.
+    /// </summary>
+    /// <param name="ct">The cancellation token.</param>
+    public async Task<SqliteConnection> CreateConnectionAsync(CancellationToken ct = default)
     {
         var connection = new SqliteConnection(_connectionString);
-        connection.Open();
+        await connection.OpenAsync();
 
         // Enable foreign key constraints
         using var command = connection.CreateCommand();
         command.CommandText = "PRAGMA foreign_keys = ON";
-        command.ExecuteNonQuery();
+        await command.ExecuteNonQueryAsync();
 
         return connection;
     }
