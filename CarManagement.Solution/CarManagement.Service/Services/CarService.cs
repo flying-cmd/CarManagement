@@ -34,6 +34,8 @@ public class CarService : ICarService
 
     /// <summary>
     /// Add car and create car stock.
+    /// If the car already exists, reuse it and create a new car stock for the current dealer.
+    /// Otherwise, create a new car and a new car stock for the current dealer.
     /// </summary>
     /// <param name="req">The add car request <see cref="AddCarRequestDto"/>.</param>
     /// <param name="dealerId">The dealer id.</param>
@@ -60,21 +62,28 @@ public class CarService : ICarService
             }
 
             // Check if car already exists
-            var existingCar = await _carRepository.GetByMakeModelYearAsync(make, model, req.Year, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
-            if (existingCar is not null)
+            var car = await _carRepository.GetByMakeModelYearAsync(make, model, req.Year, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+
+            // If the car does not exist, create a new car and a new car stock
+            if (car is null)
             {
-                _logger.LogError("Add Car Failed: Car already exists");
-                throw ApiException.BadRequest("Car already exists");
+                car = new Car(make, model, req.Year);
+                var addedCar = await _carRepository.AddCarAsync(car, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+            
+                if (!addedCar)
+                {
+                    _logger.LogError("Add Car Failed: Internal server error");
+                    throw ApiException.InternalServerError("Internal server error");
+                }
             }
 
-            // Add car
-            var car = new Car(make, model, req.Year);
-            var result = await _carRepository.AddCarAsync(car, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
-
-            if (!result)
+            // If the car already exists, reuse it and create a new car stock
+            // Check if the dealer already has a car stock
+            var existingCarStock = await _carRepository.ExistsAsync(dealerId, car.Id, ct, _unitOfWork.Connection, _unitOfWork.Transaction);
+            if (existingCarStock)
             {
-                _logger.LogError("Add Car Failed: Internal server error");
-                throw ApiException.InternalServerError("Internal server error");
+                _logger.LogError("Add Car Failed: Car Stock already exists for the dealer. CarId: {CarId}, DealerId: {DealerId}", car.Id, dealerId);
+                throw ApiException.BadRequest("Car Stock already exists");
             }
 
             // Create car stock
@@ -89,7 +98,9 @@ public class CarService : ICarService
 
             await _unitOfWork.CommitAsync(ct);
 
-            var addedCar = new CarResponseDto
+            _logger.LogInformation("Car added successfully and car stock created successfully");
+
+            return new CarResponseDto
             {
                 Id = car.Id,
                 DealerId = dealerId,
@@ -102,10 +113,6 @@ public class CarService : ICarService
                 CreatedAt = car.CreatedAt,
                 StockUpdatedAt = carStock.UpdatedAt
             };
-
-            _logger.LogInformation("Car added successfully and car stock created successfully");
-
-            return addedCar;
         }
         catch (ApiException)
         {
