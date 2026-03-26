@@ -38,4 +38,8 @@ public class ApiException : Exception
     public static ApiException Conflict(
         string message = "A conflict occurred.")
         => new(message, StatusCodes.Status409Conflict);
+
+    public static ApiException InternalServerError(
+        string message = "An unexpected error occurred.")
+        => new(message, StatusCodes.Status500InternalServerError);
 }

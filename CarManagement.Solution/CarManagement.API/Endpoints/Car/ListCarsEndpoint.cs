@@ -38,7 +38,7 @@ public sealed class ListCarsEndpoint : Endpoint<ListCarsRequestDto, ApiResponse<
     public override async Task HandleAsync(ListCarsRequestDto req, CancellationToken ct)
     {
         var result = await _carService.ListCarsAsync(req, _userContext.DealerId, ct);
-        
+
         await Send.OkAsync(
             ApiResponse<PagedResult<CarResponseDto>>.SuccessResponse(result),
             ct);

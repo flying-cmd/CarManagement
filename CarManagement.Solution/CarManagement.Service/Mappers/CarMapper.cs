@@ -1,22 +1,23 @@
 ﻿using CarManagement.Models.Entities;
 using CarManagement.Service.DTOs.Car;
 using FastEndpoints;
+using static CarManagement.Repository.Repositories.CarRepository;
 
 namespace CarManagement.Service.Mappers;
 
-public class CarMapper : ResponseMapper<CarResponseDto, Car>
+public class CarMapper : ResponseMapper<CarResponseDto, CarWithStockRow>
 {
-    public override CarResponseDto FromEntity(Car car) => new()
+    public override CarResponseDto FromEntity(CarWithStockRow car) => new()
     {
-        Id = car.Id,
-        DealerId = car.DealerId,
+        Id = Guid.Parse(car.Id),
+        DealerId = Guid.Parse(car.DealerId),
+        CarStockId = Guid.Parse(car.CarStockId),
         Make = car.Make,
         Model = car.Model,
         Year = car.Year,
-        Colour = car.Colour,
-        Price = car.Price,
+        UnitPrice = car.UnitPrice,
         StockLevel = car.StockLevel,
-        CreatedAt = car.CreatedAt,
-        UpdatedAt = car.UpdatedAt
+        CreatedAt = DateTimeOffset.Parse(car.CreatedAt),
+        StockUpdatedAt = DateTimeOffset.Parse(car.StockUpdatedAt)
     };
 }

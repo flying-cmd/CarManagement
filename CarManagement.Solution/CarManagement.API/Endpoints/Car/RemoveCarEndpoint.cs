@@ -25,11 +25,11 @@ public sealed class RemoveCarEndpoint : Endpoint<RemoveCarRequestDto>
         Roles(RoleNames.DEALER);
         Summary(s =>
         {
-            s.Summary = "Remove car";
-            s.Description = "Remove car by given Id";
+            s.Summary = "Remove car's stock record for the current dealer. And if there is no stock left for all dealers, remove the car.";
+            s.Description = "Remove the current dealer's stock record for the given car Id. And if there is no stock left for all dealers, remove the car.";
             s.Params["Id"] = "Id of the car";
-            s.Response(StatusCodes.Status204NoContent, "Car removed successfully.");
-            s.Response<ApiResponse<object?>>(StatusCodes.Status400BadRequest, "Car not found.");
+            s.Response(StatusCodes.Status204NoContent, "Car's stock record removed successfully.");
+            s.Response<ApiResponse<object?>>(StatusCodes.Status404NotFound, "Car not found.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status401Unauthorized, "Unauthorized.");
             s.Response<ApiResponse<object?>>(StatusCodes.Status403Forbidden, "Forbidden.");
         });
@@ -38,7 +38,7 @@ public sealed class RemoveCarEndpoint : Endpoint<RemoveCarRequestDto>
     public override async Task HandleAsync(RemoveCarRequestDto req, CancellationToken ct)
     {
         await _carService.RemoveCarByIdAsync(req.Id, _userContext.DealerId, ct);
-        
+
         await Send.NoContentAsync(ct);
     }
 }

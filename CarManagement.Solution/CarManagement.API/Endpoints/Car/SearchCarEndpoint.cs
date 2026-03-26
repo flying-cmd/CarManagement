@@ -40,7 +40,7 @@ public sealed class SearchCarEndpoint : Endpoint<SearchCarRequestDto, ApiRespons
     public override async Task HandleAsync(SearchCarRequestDto req, CancellationToken ct)
     {
         var result = await _carService.SearchCarsAsync(req, _userContext.DealerId, ct);
-        
+
         await Send.OkAsync(ApiResponse<PagedResult<CarResponseDto>>.SuccessResponse(result), ct);
     }
 }

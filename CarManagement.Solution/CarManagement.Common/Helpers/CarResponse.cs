@@ -1,6 +1,6 @@
-﻿namespace CarManagement.Service.DTOs.Car;
+﻿namespace CarManagement.Common.Helpers;
 
-public class CarResponseDto
+public sealed class CarResponse
 {
     /// <summary>
     /// The id of the car.

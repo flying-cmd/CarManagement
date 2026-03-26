@@ -2,6 +2,7 @@
 using CarManagement.Models.Entities;
 using CarManagementApi.Repository.Interfaces;
 using Dapper;
+using System.Data;
 
 namespace CarManagement.Repository.Repositories;
 
@@ -27,7 +28,7 @@ public class DealerRepository : IDealerRepository
             VALUES (@Id, @Name, @Email, @PhoneNumber, @PasswordHash, @CreatedAt)
             """;
 
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync(ct);
 
         await connection.ExecuteAsync(new CommandDefinition(
             sql,
@@ -53,7 +54,7 @@ public class DealerRepository : IDealerRepository
     {
         const string sql = "SELECT * FROM Dealers WHERE Email = @email";
 
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync(ct);
 
         var row = await connection.QuerySingleOrDefaultAsync<DealerRow>(
             new CommandDefinition(sql, new { email }, cancellationToken: ct));
@@ -78,27 +79,38 @@ public class DealerRepository : IDealerRepository
     /// <param name="dealerId">The id of the dealer.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns the dealer if found, otherwise null.</returns>
-    public async Task<Dealer?> GetDealerByIdAsync(Guid dealerId, CancellationToken ct)
+    public async Task<Dealer?> GetDealerByIdAsync(Guid dealerId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
     {
         const string sql = "SELECT * FROM Dealers WHERE Id = @Id";
 
-        using var connection = _connectionFactory.CreateConnection();
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
 
-        var row = await connection.QuerySingleOrDefaultAsync<DealerRow>(
-            new CommandDefinition(sql, new { Id = dealerId.ToString() }, cancellationToken: ct));
-
-        if (row is null)
+        try
         {
-            return null;
-        }
+            var row = await connection.QuerySingleOrDefaultAsync<DealerRow>(
+                new CommandDefinition(sql, new { Id = dealerId.ToString() }, transaction: transaction, cancellationToken: ct));
 
-        return Dealer.Rehydrate(
-            Guid.Parse(row.Id),
-            row.Name,
-            row.Email,
-            row.PhoneNumber,
-            row.PasswordHash,
-            DateTimeOffset.Parse(row.CreatedAt));
+            if (row is null)
+            {
+                return null;
+            }
+
+            return Dealer.Rehydrate(
+                Guid.Parse(row.Id),
+                row.Name,
+                row.Email,
+                row.PhoneNumber,
+                row.PasswordHash,
+                DateTimeOffset.Parse(row.CreatedAt));
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
     }
 
     /// <summary>

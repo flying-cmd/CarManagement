@@ -32,11 +32,14 @@ builder.Services.AddScoped<IUserContext, UserContext>();
 // Mapper
 builder.Services.AddSingleton<CarMapper>();
 
-//// Repositories
+// Repositories
 builder.Services.AddScoped<IDealerRepository, DealerRepository>();
 builder.Services.AddScoped<ICarRepository, CarRepository>();
 
-//// Services
+// Unit of work
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICarService, CarService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
