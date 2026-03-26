@@ -1,4 +1,4 @@
-﻿using CarManagement.Common.Exceptions;
+using CarManagement.Common.Exceptions;
 using CarManagement.Models.Entities;
 using CarManagement.Service.DTOs.Auth;
 using CarManagement.Service.Interfaces;
@@ -43,7 +43,7 @@ public class AuthServiceTests
             Email = "  dealer@example.com  ",
             Password = "P@ssword123!"
         };
-        var dealer = Dealer.CreateDealer("Dealer One", "dealer@example.com", "P@ssword123!", _passwordHasherMock.Object);
+        var dealer = Dealer.CreateDealer("Dealer One", "dealer@example.com", "0400000000", "P@ssword123!", _passwordHasherMock.Object);
         var expiresAtUtc = DateTime.UtcNow.AddMinutes(60);
 
         _dealerRepositoryMock
@@ -53,7 +53,7 @@ public class AuthServiceTests
         _passwordHasherMock
             .Setup(x => x.VerifyHashedPassword(dealer, dealer.PasswordHash, "P@ssword123!"))
             .Returns(PasswordVerificationResult.Success);
-        
+
         _jwtTokenServiceMock
             .Setup(x => x.GenerateToken(dealer))
             .Returns(("fake-jwt-token", expiresAtUtc));
@@ -120,7 +120,7 @@ public class AuthServiceTests
             Email = " dealer@example.com ",
             Password = "P@ssword123!"
         };
-        var dealer = Dealer.CreateDealer("Dealer One", "dealer@example.com", "Abc123!", _passwordHasherMock.Object);
+        var dealer = Dealer.CreateDealer("Dealer One", "dealer@example.com", "0400000000", "Abc123!", _passwordHasherMock.Object);
 
         _dealerRepositoryMock
             .Setup(x => x.GetDealerByEmailAsync("dealer@example.com", It.IsAny<CancellationToken>()))
@@ -157,9 +157,10 @@ public class AuthServiceTests
         {
             Name = "Dealer One",
             Email = " dealer@example.com ",
+            PhoneNumber = "0400000000",
             Password = "P@ssword123!"
         };
-        var dealer = Dealer.CreateDealer("Dealer One", "dealer@example.com", "P@ssword123!", _passwordHasherMock.Object);
+        var dealer = Dealer.CreateDealer("Dealer One", "dealer@example.com", "0400000000", "P@ssword123!", _passwordHasherMock.Object);
 
         _dealerRepositoryMock
             .Setup(x => x.GetDealerByEmailAsync("dealer@example.com", It.IsAny<CancellationToken>()))
@@ -189,6 +190,7 @@ public class AuthServiceTests
         {
             Name = "Dealer One",
             Email = " dealer@example.com ",
+            PhoneNumber = "0400000000",
             Password = "P@ssword123!"
         };
         Dealer? savedDealer = null;
