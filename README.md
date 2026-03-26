@@ -86,6 +86,23 @@ Key design points:
 - update car stock levels: Update car stock level.
 - search car by make and model:  search cars owned by the current dealer with optional make and model filters. The returned reult is in pagination.
 
+### Database UML
+
+![Database UML](./UML.png)
+
+### Relationship Explanation
+
+- `Dealers` stores dealer accounts.
+- `Cars` stores the base car catalog data: `Make`, `Model`, and `Year`.
+- `CarStocks` is the link table between `Dealers` and `Cars`. It stores dealer-specific inventory details such as `StockLevel` and `UnitPrice`.
+- One dealer can have many `CarStocks` rows.
+- One car can appear in many `CarStocks` rows.
+- Because of that, the database models a many-to-many relationship between `Dealers` and `Cars`, with `CarStocks` carrying the relationship data.
+- `CarStocks.DealerId` is a foreign key to `Dealers.Id`.
+- `CarStocks.CarId` is a foreign key to `Cars.Id`.
+- The unique constraint on `(DealerId, CarId)` prevents the same dealer from having duplicate stock rows for the same car.
+- The unique constraint on `(Make, Model, Year)` in `Cars` prevents duplicate car definitions in the catalog.
+
 ## Prerequisites
 
 - .NET 9 SDK
