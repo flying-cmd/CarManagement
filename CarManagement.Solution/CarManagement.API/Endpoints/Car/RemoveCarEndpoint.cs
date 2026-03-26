@@ -18,6 +18,9 @@ public sealed class RemoveCarEndpoint : Endpoint<RemoveCarRequestDto>
         _userContext = userContext;
     }
 
+    /// <summary>
+    /// Configure the remove car endpoint, authentication, authorization and swagger documentation.
+    /// </summary>
     public override void Configure()
     {
         Delete("/api/cars/{Id:guid}");
@@ -35,6 +38,11 @@ public sealed class RemoveCarEndpoint : Endpoint<RemoveCarRequestDto>
         });
     }
 
+    /// <summary>
+    /// Handle the remove car request.
+    /// </summary>
+    /// <param name="req">The remove car request. See <see cref="RemoveCarRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(RemoveCarRequestDto req, CancellationToken ct)
     {
         await _carService.RemoveCarByIdAsync(req.Id, _userContext.DealerId, ct);

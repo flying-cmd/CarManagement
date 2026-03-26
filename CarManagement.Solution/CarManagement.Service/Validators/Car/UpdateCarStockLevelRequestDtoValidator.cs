@@ -4,6 +4,9 @@ using FluentValidation;
 
 namespace CarManagement.Service.Validators.Car;
 
+/// <summary>
+/// Validator for <see cref="UpdateCarStockLevelRequestDto"/>.
+/// </summary>
 public sealed class UpdateCarStockLevelRequestDtoValidator : Validator<UpdateCarStockLevelRequestDto>
 {
     public UpdateCarStockLevelRequestDtoValidator()

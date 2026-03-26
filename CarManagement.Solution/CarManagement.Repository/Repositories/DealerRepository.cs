@@ -49,7 +49,7 @@ public class DealerRepository : IDealerRepository
     /// </summary>
     /// <param name="email">The email of the dealer.</param>
     /// <param name="ct">The cancellation token.</param>
-    /// <returns>Returns the dealer if found, otherwise null.</returns>
+    /// <returns>Returns the <see cref="Dealer"/> if found, otherwise null.</returns>
     public async Task<Dealer?> GetDealerByEmailAsync(string email, CancellationToken ct)
     {
         const string sql = "SELECT * FROM Dealers WHERE Email = @email";
@@ -78,7 +78,7 @@ public class DealerRepository : IDealerRepository
     /// </summary>
     /// <param name="dealerId">The id of the dealer.</param>
     /// <param name="ct">The cancellation token.</param>
-    /// <returns>Returns the dealer if found, otherwise null.</returns>
+    /// <returns>Returns the <see cref="Dealer"/> if found, otherwise null.</returns>
     public async Task<Dealer?> GetDealerByIdAsync(Guid dealerId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
     {
         const string sql = "SELECT * FROM Dealers WHERE Id = @Id";

@@ -18,6 +18,9 @@ public sealed class SearchCarEndpoint : Endpoint<SearchCarRequestDto, ApiRespons
         _userContext = userContext;
     }
 
+    /// <summary>
+    /// Configure the search car endpoint, authentication, authorization and swagger documentation.
+    /// </summary>
     public override void Configure()
     {
         Get("/api/cars/search");
@@ -37,6 +40,11 @@ public sealed class SearchCarEndpoint : Endpoint<SearchCarRequestDto, ApiRespons
         });
     }
 
+    /// <summary>
+    /// Handle the search car request.
+    /// </summary>
+    /// <param name="req">The search car request.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(SearchCarRequestDto req, CancellationToken ct)
     {
         var result = await _carService.SearchCarsAsync(req, _userContext.DealerId, ct);

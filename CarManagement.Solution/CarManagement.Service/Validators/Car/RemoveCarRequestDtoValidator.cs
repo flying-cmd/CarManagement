@@ -4,6 +4,9 @@ using FluentValidation;
 
 namespace CarManagement.Service.Validators.Car;
 
+/// <summary>
+/// Validator for <see cref="RemoveCarRequestDto"/>.
+/// </summary>
 public sealed class RemoveCarRequestDtoValidator : Validator<RemoveCarRequestDto>
 {
     public RemoveCarRequestDtoValidator()

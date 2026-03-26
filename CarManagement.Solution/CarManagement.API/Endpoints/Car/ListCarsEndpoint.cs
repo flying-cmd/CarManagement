@@ -18,6 +18,9 @@ public sealed class ListCarsEndpoint : Endpoint<ListCarsRequestDto, ApiResponse<
         _userContext = userContext;
     }
 
+    /// <summary>
+    /// COnfigures the list cars endpoint, authentication, authorization and swagger documentation.
+    /// </summary>
     public override void Configure()
     {
         Get("/api/cars");
@@ -35,6 +38,11 @@ public sealed class ListCarsEndpoint : Endpoint<ListCarsRequestDto, ApiResponse<
         });
     }
 
+    /// <summary>
+    /// Handles the list cars request.
+    /// </summary>
+    /// <param name="req">The list cars request. See <see cref="ListCarsRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(ListCarsRequestDto req, CancellationToken ct)
     {
         var result = await _carService.ListCarsAsync(req, _userContext.DealerId, ct);

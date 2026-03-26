@@ -4,6 +4,9 @@ using FluentValidation;
 
 namespace CarManagement.Service.Validators.Auth;
 
+/// <summary>
+/// Validator for <see cref="LoginRequestDto"/>.
+/// </summary>
 public class LoginRequestDtoValidator : Validator<LoginRequestDto>
 {
     public LoginRequestDtoValidator()

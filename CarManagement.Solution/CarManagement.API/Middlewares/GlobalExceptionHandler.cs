@@ -4,12 +4,22 @@ using FluentValidation;
 
 namespace CarManagement.API.Middlewares;
 
+/// <summary>
+/// Global exception handler middleware that handles any unhandled exceptions.
+/// Logs the exception and returns a consistent JSON error response.
+/// </summary>
 public class GlobalExceptionHandler
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionHandler> _logger;
     private readonly IHostEnvironment _hostEnvironment;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GlobalExceptionHandler"/> class.
+    /// </summary>
+    /// <param name="next">The next middleware in the pipeline.</param>
+    /// <param name="logger">The logger used to record unhandled exceptions.</param>
+    /// <param name="hostEnvironment">The host environment used to determine development or production behavior.</param>
     public GlobalExceptionHandler(RequestDelegate next, ILogger<GlobalExceptionHandler> logger, IHostEnvironment hostEnvironment)
     {
         _next = next;
@@ -17,6 +27,11 @@ public class GlobalExceptionHandler
         _hostEnvironment = hostEnvironment;
     }
 
+    /// <summary>
+    /// Invokes the middleware, catches any unhandled exception from downstream middleware,
+    /// logs it, and writes a standardized JSON error response.
+    /// </summary>
+    /// <param name="context">The current HTTP context.</param>
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -44,11 +59,14 @@ public class GlobalExceptionHandler
     }
 
     /// <summary>
-    /// Map exception to error response
+    /// Maps a thrown exception to an HTTP status code and a standardized API error response.
     /// </summary>
     /// <param name="context">The http context.</param>
-    /// <param name="exception">The exception.</param>
-    /// <returns>Returns (int StatusCode, ApiResponse<object?> Response).</returns>
+    /// <param name="exception">The exception to map.</param>
+    /// <returns>
+    /// Returns a tuple containing the HTTP status code
+    /// and the corresponding <see cref="ApiResponse{T}"/> error response.
+    /// </returns>
     private (int StatusCode, ApiResponse<object?> Response) BuidErrorResponse(HttpContext context, Exception exception)
     {
         return exception switch

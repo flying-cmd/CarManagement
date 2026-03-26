@@ -6,6 +6,9 @@ using System.Data.Common;
 
 namespace CarManagement.Repository.Repositories;
 
+/// <summary>
+/// Coordinates database transactions for a single unit of work.
+/// </summary>
 public class UnitOfWork : IUnitOfWork, IDisposable
 {
     private readonly SqliteConnectionFactory _connectionFactory;
