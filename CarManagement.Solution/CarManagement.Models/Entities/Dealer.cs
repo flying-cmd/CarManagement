@@ -2,13 +2,39 @@
 
 namespace CarManagement.Models.Entities;
 
+/// <summary>
+/// Represents a dealer entity.
+/// </summary>
 public class Dealer
 {
+    /// <summary>
+    /// The id of the dealer.
+    /// </summary>
     public Guid Id { get; init; }
+
+    /// <summary>
+    /// The name of the dealer.
+    /// </summary>
     public string Name { get; private set; } = null!;
+
+    /// <summary>
+    /// The email of the dealer.
+    /// </summary>
     public string Email { get; private set; } = null!;
+
+    /// <summary>
+    /// The phone number of the dealer.
+    /// </summary>
     public string PhoneNumber { get; private set; } = null!;
+
+    /// <summary>
+    /// The hashed password of the dealer.
+    /// </summary>
     public string PasswordHash { get; private set; } = null!;
+
+    /// <summary>
+    /// The creation date of the dealer.
+    /// </summary>
     public DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>
@@ -16,7 +42,7 @@ public class Dealer
     /// </summary>
     /// <param name="name">The name of the dealer.</param>
     /// <param name="email">The email of the dealer.</param>
-    /// param name="phoneNumber">The phone number of the dealer.</param>
+    /// <param name="phoneNumber">The phone number of the dealer.</param>
     /// <param name="plainPassword">The plain text password of the dealer.</param>
     /// <param name="passwordHasher">The password hasher.</param>
     /// <returns>Returns the new <see cref="Dealer"/>.</returns>

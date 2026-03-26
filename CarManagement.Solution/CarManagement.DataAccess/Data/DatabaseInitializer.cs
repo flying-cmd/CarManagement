@@ -5,6 +5,9 @@ using System.Data;
 
 namespace CarManagement.DataAccess.Data;
 
+/// <summary>
+/// Database initializer.
+/// </summary>
 public class DatabaseInitializer
 {
     private readonly SqliteConnectionFactory _sqliteConnectionFactory;

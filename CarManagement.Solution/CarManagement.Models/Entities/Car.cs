@@ -1,11 +1,34 @@
 ﻿namespace CarManagement.Models.Entities;
 
+/// <summary>
+/// Represents a car entity.
+/// Stores basic car information that can be shared across multiple dealers.
+/// </summary>
 public class Car
 {
+    /// <summary>
+    /// The id of the car.
+    /// </summary>
     public Guid Id { get; init; }
+
+    /// <summary>
+    /// The make of the car.
+    /// </summary>
     public string Make { get; private set; } = null!;
+
+    /// <summary>
+    /// The model of the car.
+    /// </summary>
     public string Model { get; private set; } = null!;
+
+    /// <summary>
+    /// The year of the car.
+    /// </summary>
     public int Year { get; private set; }
+
+    /// <summary>
+    /// The creation date of the car.
+    /// </summary>
     public DateTimeOffset CreatedAt { get; init; }
 
     /// <summary>
@@ -48,13 +71,9 @@ public class Car
     /// <summary>
     /// Create a new car.
     /// </summary>
-    /// <param name="dealerId">The id of the dealer.</param>
     /// <param name="make">The make of the car.</param>
     /// <param name="model">The model of the car.</param>
     /// <param name="year">The year of the car.</param>
-    /// <param name="colour">The colour of the car.</param>
-    /// <param name="price">The price of the car.</param>
-    /// <param name="stockLevel">The stock level of the car.</param>
     public Car(
         string make, 
         string model, 

@@ -14,6 +14,9 @@ public sealed class RegisterEndpoint : Endpoint<RegisterRequestDto, ApiResponse<
         _authService = authService;
     }
 
+    /// <summary>
+    /// Configures the registration endpoint route.
+    /// </summary>
     public override void Configure()
     {
         Post("api/auth/register");
@@ -31,6 +34,11 @@ public sealed class RegisterEndpoint : Endpoint<RegisterRequestDto, ApiResponse<
         });
     }
 
+    /// <summary>
+    /// Handles the registration request.
+    /// </summary>
+    /// <param name="req">The registration request. See <see cref="RegisterRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(RegisterRequestDto req, CancellationToken ct)
     {
         var res = await _authService.RegisterAsync(req, ct);

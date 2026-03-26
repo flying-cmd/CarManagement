@@ -15,6 +15,9 @@ public sealed class LoginEndpoint : Endpoint<LoginRequestDto, ApiResponse<AuthRe
         _authService = authService;
     }
 
+    /// <summary>
+    /// Configures the login endpoint route.
+    /// </summary>
     public override void Configure()
     {
         Post("api/auth/login");
@@ -31,6 +34,11 @@ public sealed class LoginEndpoint : Endpoint<LoginRequestDto, ApiResponse<AuthRe
         });
     }
 
+    /// <summary>
+    /// Handles the login request.
+    /// </summary>
+    /// <param name="req">The login request. See <see cref="LoginRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(LoginRequestDto req, CancellationToken ct)
     {
         var res = await _authService.LoginAsync(req, ct);

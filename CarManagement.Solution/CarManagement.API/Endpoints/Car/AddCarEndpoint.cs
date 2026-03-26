@@ -20,6 +20,9 @@ public sealed class AddCarEndpoint : Endpoint<AddCarRequestDto, ApiResponse<CarR
         _userContext = userContext;
     }
 
+    /// <summary>
+    /// Configure the add car endpoint, authentication, authorization and swagger documentation.
+    /// </summary>
     public override void Configure()
     {
         Post("/api/cars");
@@ -40,6 +43,11 @@ public sealed class AddCarEndpoint : Endpoint<AddCarRequestDto, ApiResponse<CarR
         });
     }
 
+    /// <summary>
+    /// Handle the add car request.
+    /// </summary>
+    /// <param name="req">The add car request. See <see cref="AddCarRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(AddCarRequestDto req, CancellationToken ct)
     {
         var result = await _carService.AddCarAsync(req, _userContext.DealerId, ct);

@@ -18,6 +18,9 @@ public sealed class UpdateCarStockLevelEndpoint : Endpoint<UpdateCarStockLevelRe
         _userContext = userContext;
     }
 
+    /// <summary>
+    /// Configure the update car stock level endpoint, authentication, authorization and swagger documentation.
+    /// </summary>
     public override void Configure()
     {
         Patch("/api/cars/{Id:guid}/stock-level");
@@ -37,6 +40,11 @@ public sealed class UpdateCarStockLevelEndpoint : Endpoint<UpdateCarStockLevelRe
         });
     }
 
+    /// <summary>
+    /// Handle the update car stock level request.
+    /// </summary>
+    /// <param name="req">The update car stock level request. See <see cref="UpdateCarStockLevelRequestDto"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
     public override async Task HandleAsync(UpdateCarStockLevelRequestDto req, CancellationToken ct)
     {
         await _carService.UpdateCarStockLevelByIdAsync(req.Id, req.StockLevel, _userContext.DealerId, ct);
