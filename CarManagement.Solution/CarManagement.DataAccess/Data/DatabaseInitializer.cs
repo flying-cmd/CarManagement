@@ -33,6 +33,7 @@ public class DatabaseInitializer
 
         using var connection = _sqliteConnectionFactory.CreateConnection();
 
+        // Create the schema
         var schemaSql = """
             CREATE TABLE IF NOT EXISTS Dealers (
                 Id TEXT PRIMARY KEY COLLATE NOCASE,
@@ -42,18 +43,6 @@ public class DatabaseInitializer
                 PasswordHash TEXT NOT NULL,
                 CreatedAt DATETIME NOT NULL
             );
-
-            CREATE TABLE IF NOT EXISTS DealerAddresses (
-                Id TEXT PRIMARY KEY COLLATE NOCASE,
-                DealerId TEXT NOT NULL,
-                Line TEXT NOT NULL,
-                Suburb TEXT NOT NULL COLLATE NOCASE,
-                State TEXT NOT NULL COLLATE NOCASE,
-                Postcode TEXT NOT NULL COLLATE NOCASE,
-                Country TEXT NOT NULL COLLATE NOCASE,
-                CreatedAt TEXT NOT NULL,
-                FOREIGN KEY (DealerId) REFERENCES Dealers(Id) ON DELETE CASCADE
-            ); 
 
             CREATE TABLE IF NOT EXISTS Cars (
                 Id TEXT PRIMARY KEY COLLATE NOCASE,
@@ -74,9 +63,6 @@ public class DatabaseInitializer
                 FOREIGN KEY (CarId) REFERENCES Cars(Id) ON DELETE CASCADE,
                 CONSTRAINT UX_CarStocks_DealerId_CarId UNIQUE (DealerId, CarId)
             );
-
-            CREATE INDEX IF NOT EXISTS IX_DealerAddresses_DealerId
-            ON DealerAddresses (DealerId);
 
             CREATE UNIQUE INDEX IF NOT EXISTS UX_Cars_Make_Model_Year
             ON Cars (Make, Model, Year);
@@ -102,7 +88,7 @@ public class DatabaseInitializer
             var tomDealerId = await SeedDealerAsync(
                 connection,
                 transaction,
-                "tom",
+                "Tom Dealer",
                 "tom@example.com",
                 "0412345678",
                 "Pass123$",
@@ -111,43 +97,10 @@ public class DatabaseInitializer
             var jackDealerId = await SeedDealerAsync(
                 connection,
                 transaction,
-                "jack",
+                "Jack Dealer",
                 "jack@example.com",
                 "0498765432",
                 "Pass123$",
-                cancellationToken);
-
-            await SeedDealerAddressAsync(
-                connection,
-                transaction,
-                tomDealerId,
-                "100 Collins Street",
-                "Melbourne",
-                "VIC",
-                "3000",
-                "Australia",
-                cancellationToken);
-
-            await SeedDealerAddressAsync(
-                connection,
-                transaction,
-                tomDealerId,
-                "25 Logistics Drive",
-                "Dandenong South",
-                "VIC",
-                "3175",
-                "Australia",
-                cancellationToken);
-
-            await SeedDealerAddressAsync(
-                connection,
-                transaction,
-                jackDealerId,
-                "200 George Street",
-                "Sydney",
-                "NSW",
-                "2000",
-                "Australia",
                 cancellationToken);
 
             var corollaId = await SeedCarAsync(
@@ -221,8 +174,15 @@ public class DatabaseInitializer
 
     /// <summary>
     /// Seed a dealer if it does not already exist.
-    /// Returns the dealer id.
     /// </summary>
+    /// <param name="connection">The DB connection.</param>
+    /// <param name="transaction">The DB transaction.</param>
+    /// <param name="name">The name of the dealer.</param>
+    /// <param name="email">The email of the dealer.</param>
+    /// <param name="phoneNumber">The phone number of the dealer.</param>
+    /// <param name="password">The password of the dealer.</param>
+    /// <param name="cancellationToken"></param>
+    /// <returns>Return the dealer id.</returns>
     private async Task<Guid> SeedDealerAsync(
         IDbConnection connection,
         IDbTransaction transaction,
@@ -232,8 +192,11 @@ public class DatabaseInitializer
         string password,
         CancellationToken cancellationToken = default)
     {
+        var trimmedName = name.Trim();
         var normalizedEmail = email.Trim().ToLowerInvariant();
+        var trimmedPhoneNumber = phoneNumber.Trim();
 
+        // Check if the dealer already exists
         var existingDealerId = await connection.QuerySingleOrDefaultAsync<string?>(
             new CommandDefinition(
                 """
@@ -246,106 +209,51 @@ public class DatabaseInitializer
                 transaction: transaction,
                 cancellationToken: cancellationToken));
 
+        // If the dealer already exists, return the id
         if (!string.IsNullOrWhiteSpace(existingDealerId))
         {
             return Guid.Parse(existingDealerId);
         }
 
+        // Create new dealer
         var dealer = Dealer.CreateDealer(
-            name.Trim(),
+            trimmedName,
             normalizedEmail,
-            phoneNumber.Trim(),
+            trimmedPhoneNumber,
             password,
             _passwordHasher);
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            """
-            INSERT INTO Dealers (Id, Name, Email, PhoneNumber, PasswordHash, CreatedAt)
-            VALUES (@Id, @Name, @Email, @PhoneNumber, @PasswordHash, @CreatedAt);
-            """,
-            new
-            {
-                Id = dealer.Id.ToString(),
-                dealer.Name,
-                dealer.Email,
-                dealer.PhoneNumber,
-                dealer.PasswordHash,
-                CreatedAt = dealer.CreatedAt.ToString("O")
-            },
-            transaction: transaction,
-            cancellationToken: cancellationToken));
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                INSERT INTO Dealers (Id, Name, Email, PhoneNumber, PasswordHash, CreatedAt)
+                VALUES (@Id, @Name, @Email, @PhoneNumber, @PasswordHash, @CreatedAt);
+                """,
+                new
+                {
+                    Id = dealer.Id.ToString(),
+                    dealer.Name,
+                    dealer.Email,
+                    dealer.PhoneNumber,
+                    dealer.PasswordHash,
+                    CreatedAt = dealer.CreatedAt.ToString("O")
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken));
 
         return dealer.Id;
     }
 
     /// <summary>
-    /// Seed a dealer address if it does not already exist.
-    /// </summary>
-    private async Task SeedDealerAddressAsync(
-        IDbConnection connection,
-        IDbTransaction transaction,
-        Guid dealerId,
-        string line,
-        string suburb,
-        string state,
-        string postcode,
-        string country,
-        CancellationToken cancellationToken = default)
-    {
-        var existingAddressId = await connection.QuerySingleOrDefaultAsync<string?>(
-            new CommandDefinition(
-                """
-                SELECT Id
-                FROM DealerAddresses
-                WHERE DealerId = @DealerId
-                  AND Line = @Line
-                  AND Suburb = @Suburb
-                  AND State = @State
-                  AND Postcode = @Postcode
-                  AND Country = @Country
-                LIMIT 1;
-                """,
-                new
-                {
-                    DealerId = dealerId.ToString(),
-                    Line = line.Trim(),
-                    Suburb = suburb.Trim(),
-                    State = state.Trim(),
-                    Postcode = postcode.Trim(),
-                    Country = country.Trim()
-                },
-                transaction: transaction,
-                cancellationToken: cancellationToken));
-
-        if (!string.IsNullOrWhiteSpace(existingAddressId))
-        {
-            return;
-        }
-
-        await connection.ExecuteAsync(new CommandDefinition(
-            """
-            INSERT INTO DealerAddresses (Id, DealerId, Line, Suburb, State, Postcode, Country, CreatedAt)
-            VALUES (@Id, @DealerId, @Line, @Suburb, @State, @Postcode, @Country, @CreatedAt);
-            """,
-            new
-            {
-                Id = Guid.NewGuid().ToString(),
-                DealerId = dealerId.ToString(),
-                Line = line.Trim(),
-                Suburb = suburb.Trim(),
-                State = state.Trim(),
-                Postcode = postcode.Trim(),
-                Country = country.Trim(),
-                CreatedAt = DateTimeOffset.UtcNow.ToString("O")
-            },
-            transaction: transaction,
-            cancellationToken: cancellationToken));
-    }
-
-    /// <summary>
     /// Seed a car if it does not already exist.
-    /// Returns the car id.
     /// </summary>
+    /// <param name="connection">The DB connection.</param>
+    /// <param name="transaction">The DB transaction.</param>
+    /// <param name="make">The make of the car.</param>
+    /// <param name="model">The model of the car.</param>
+    /// <param name="year">The year of the car.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Returns the car id.</returns>
     private async Task<Guid> SeedCarAsync(
         IDbConnection connection,
         IDbTransaction transaction,
@@ -354,6 +262,10 @@ public class DatabaseInitializer
         int year,
         CancellationToken cancellationToken = default)
     {
+        var trimmedMake = make.Trim();
+        var trimmedModel = model.Trim();
+
+        // Check if the car already exists
         var existingCarId = await connection.QuerySingleOrDefaultAsync<string?>(
             new CommandDefinition(
                 """
@@ -366,43 +278,53 @@ public class DatabaseInitializer
                 """,
                 new
                 {
-                    Make = make.Trim(),
-                    Model = model.Trim(),
+                    Make = trimmedMake,
+                    Model = trimmedModel,
                     Year = year
                 },
                 transaction: transaction,
                 cancellationToken: cancellationToken));
 
+        // If the car already exists, return the id
         if (!string.IsNullOrWhiteSpace(existingCarId))
         {
             return Guid.Parse(existingCarId);
         }
 
-        var car = new Car(make.Trim(), model.Trim(), year);
+        // Create new car
+        var car = new Car(trimmedMake, trimmedModel, year);
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            """
-            INSERT INTO Cars (Id, Make, Model, Year, CreatedAt)
-            VALUES (@Id, @Make, @Model, @Year, @CreatedAt);
-            """,
-            new
-            {
-                Id = car.Id.ToString(),
-                car.Make,
-                car.Model,
-                car.Year,
-                CreatedAt = car.CreatedAt.ToString("O")
-            },
-            transaction: transaction,
-            cancellationToken: cancellationToken));
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                INSERT INTO Cars (Id, Make, Model, Year, CreatedAt)
+                VALUES (@Id, @Make, @Model, @Year, @CreatedAt);
+                """,
+                new
+                {
+                    Id = car.Id.ToString(),
+                    car.Make,
+                    car.Model,
+                    car.Year,
+                    CreatedAt = car.CreatedAt.ToString("O")
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken));
 
         return car.Id;
     }
 
     /// <summary>
     /// Seed a car stock if it does not already exist.
-    /// If it exists, update stock level, unit price and updated time.
     /// </summary>
+    /// <param name="connection">The DB connection.</param>
+    /// <param name="transaction">The DB transaction.</param>
+    /// <param name="dealerId">The id of the dealer.</param>
+    /// <param name="carId">The id of the car.</param>
+    /// <param name="stockLevel">The stock level of the car.</param>
+    /// <param name="unitPrice">The unit price of the car.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>Returns a task that represents the asynchronous operation.</returns>
     private async Task SeedCarStockAsync(
         IDbConnection connection,
         IDbTransaction transaction,
@@ -412,12 +334,14 @@ public class DatabaseInitializer
         decimal unitPrice,
         CancellationToken cancellationToken = default)
     {
+        // Check if the car stock already exists
         var existingStockId = await connection.QuerySingleOrDefaultAsync<string?>(
             new CommandDefinition(
                 """
                 SELECT Id
                 FROM CarStocks
-                WHERE DealerId = @DealerId AND CarId = @CarId
+                WHERE DealerId = @DealerId
+                  AND CarId = @CarId
                 LIMIT 1;
                 """,
                 new
@@ -428,46 +352,31 @@ public class DatabaseInitializer
                 transaction: transaction,
                 cancellationToken: cancellationToken));
 
+        // If the car stock already exists, return directly
         if (!string.IsNullOrWhiteSpace(existingStockId))
         {
-            await connection.ExecuteAsync(new CommandDefinition(
-                """
-                UPDATE CarStocks
-                SET StockLevel = @StockLevel,
-                    UnitPrice = @UnitPrice,
-                    UpdatedAt = @UpdatedAt
-                WHERE Id = @Id;
-                """,
-                new
-                {
-                    Id = existingStockId,
-                    StockLevel = stockLevel,
-                    UnitPrice = unitPrice,
-                    UpdatedAt = DateTimeOffset.UtcNow.ToString("O")
-                },
-                transaction: transaction,
-                cancellationToken: cancellationToken));
-
             return;
         }
 
+        // Create new car stock
         var carStock = new CarStock(dealerId, carId, stockLevel, unitPrice);
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            """
-            INSERT INTO CarStocks (Id, DealerId, CarId, StockLevel, UnitPrice, UpdatedAt)
-            VALUES (@Id, @DealerId, @CarId, @StockLevel, @UnitPrice, @UpdatedAt);
-            """,
-            new
-            {
-                Id = carStock.Id.ToString(),
-                DealerId = carStock.DealerId.ToString(),
-                CarId = carStock.CarId.ToString(),
-                carStock.StockLevel,
-                carStock.UnitPrice,
-                UpdatedAt = carStock.UpdatedAt.ToString("O")
-            },
-            transaction: transaction,
-            cancellationToken: cancellationToken));
+        await connection.ExecuteAsync(
+            new CommandDefinition(
+                """
+                INSERT INTO CarStocks (Id, DealerId, CarId, StockLevel, UnitPrice, UpdatedAt)
+                VALUES (@Id, @DealerId, @CarId, @StockLevel, @UnitPrice, @UpdatedAt);
+                """,
+                new
+                {
+                    Id = carStock.Id.ToString(),
+                    DealerId = carStock.DealerId.ToString(),
+                    CarId = carStock.CarId.ToString(),
+                    carStock.StockLevel,
+                    carStock.UnitPrice,
+                    UpdatedAt = carStock.UpdatedAt.ToString("O")
+                },
+                transaction: transaction,
+                cancellationToken: cancellationToken));
     }
 }
