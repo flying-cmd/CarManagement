@@ -1,17 +1,22 @@
 ﻿
 using CarManagement.Common.Helpers;
 using CarManagement.Models.Entities;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Data;
+using static CarManagement.Repository.Repositories.CarRepository;
 
 namespace CarManagement.Repository.Interfaces;
 
 public interface ICarRepository
 {
-    Task AddCarAsync(Car car, CancellationToken ct);
-    Task<bool> ExistsAsync(Guid dealerId, string make, string model, int year, string colour, CancellationToken ct);
-    Task<Car?> GetCarByIdAsync(Guid id, CancellationToken ct);
-    Task<PagedResult<Car>> ListCarsAsync(Guid dealerId, int pageNumber, int pageSize, CancellationToken ct);
-    Task<bool> RemoveCarByIdAsync(Guid id, CancellationToken ct);
-    Task<PagedResult<Car>> SearchCarsAsync(Guid dealerId, string? make, string? model, int pageNumber, int pageSize, CancellationToken ct);
-    Task<bool> UpdateCarStockLevelByIdAsync(Guid id, int stockLevel, CancellationToken ct);
+    Task<bool> AddCarAsync(Car car, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<Car?> GetByMakeModelYearAsync(string make, string model, int year, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<Car?> GetCarByIdAsync(Guid id, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<PagedResult<CarWithStockRow>> ListCarsAsync(Guid dealerId, int pageNumber, int pageSize, CancellationToken ct);
+    Task<bool> RemoveCarByIdAsync(Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<PagedResult<CarWithStockRow>> SearchCarsAsync(Guid dealerId, string? make, string? model, int pageNumber, int pageSize, CancellationToken ct);
+    Task<bool> AddCarStockAsync(CarStock carStock, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<bool> ExistsAsync(Guid dealerId, Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<bool> ExistsAsync(Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<bool> RemoveCarStockAsync(Guid dealerId, Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null);
+    Task<bool> UpdateCarStockLevelAsync(Guid carId, Guid dealerId, int stockLevel, CancellationToken ct);
 }

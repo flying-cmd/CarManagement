@@ -3,6 +3,7 @@ using CarManagement.DataAccess.Data;
 using CarManagement.Models.Entities;
 using CarManagement.Repository.Interfaces;
 using Dapper;
+using System.Data;
 
 namespace CarManagement.Repository.Repositories;
 
@@ -21,37 +22,45 @@ public class CarRepository : ICarRepository
     /// <param name="car">The car entity to add.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns a task that represents the asynchronous operation.</returns>
-    public async Task AddCarAsync(Car car, CancellationToken ct)
+    public async Task<bool> AddCarAsync(Car car, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
     {
         const string sql = """
-            INSERT INTO Cars (Id, DealerId, Make, Model, Year, Colour, Price, StockLevel, CreatedAt, UpdatedAt)
-            VALUES (@Id, @DealerId, @Make, @Model, @Year, @Colour, @Price, @StockLevel, @CreatedAt, @UpdatedAt)
+            INSERT INTO Cars (Id, Make, Model, Year, CreatedAt)
+            VALUES (@Id, @Make, @Model, @Year, @CreatedAt);
             """;
 
-        var now = DateTimeOffset.UtcNow.ToString("O");
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
 
-        using var connection = _connectionFactory.CreateConnection();
+        try
+        {
+            var rowsAffected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        Id = car.Id.ToString(),
+                        car.Make,
+                        car.Model,
+                        car.Year,
+                        CreatedAt = car.CreatedAt.ToString("O")
+                    },
+                    transaction: transaction,
+                    cancellationToken: ct));
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            sql, 
-            new
+            return rowsAffected > 0;
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
             {
-                Id = car.Id.ToString(),
-                DealerId = car.DealerId.ToString(),
-                Make = car.Make,
-                Model = car.Model,
-                Year = car.Year,
-                Colour = car.Colour,
-                Price = car.Price,
-                StockLevel = car.StockLevel,
-                CreatedAt = now,
-                UpdatedAt = now
-            },
-            cancellationToken: ct));
+                connection.Dispose();
+            }
+        }
     }
 
     /// <summary>
-    /// Check if car exists given the dealer id, make, model, year and colour.
+    /// Check if car exists given the dealer id, make, model and year.
     /// </summary>
     /// <param name="dealerId">The id of the dealer.</param>
     /// <param name="make">The make of the car.</param>
@@ -60,24 +69,77 @@ public class CarRepository : ICarRepository
     /// <param name="colour">The colour of the car.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns true if the car exists, otherwise false.</returns>
-    public async Task<bool> ExistsAsync(Guid dealerId, string make, string model, int year, string colour, CancellationToken ct)
+    public async Task<bool> ExistsAsync(Guid dealerId, string make, string model, int year, CancellationToken ct)
     {
         const string sql = """
             SELECT 1
-            FROM Cars
-            WHERE DealerId = @DealerId AND Make = @Make AND Model = @Model AND Year = @Year AND Colour = @Colour
+            FROM CarStocks cs
+            INNER JOIN Cars c ON c.Id = cs.CarId
+            WHERE cs.DealerId = @DealerId AND c.Make = @Make AND c.Model = @Model AND c.Year = @Year
             LIMIT 1
             """;
 
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync(ct);
 
         var exists = await connection.QuerySingleOrDefaultAsync<int?>(
             new CommandDefinition(
-                sql, 
-                new { DealerId = dealerId.ToString(), Make = make, Model = model, Year = year, Colour = colour },
+                sql,
+                new { DealerId = dealerId.ToString(), Make = make, Model = model, Year = year },
                 cancellationToken: ct));
 
         return exists.HasValue;
+    }
+
+    /// <summary>
+    /// Get car by make, model and year.
+    /// </summary>
+    /// <param name="make">The make of the car.</param>
+    /// <param name="model">The model of the car.</param>
+    /// <param name="year">The year of the car.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <param name="connection">The DB connection.</param>
+    /// <param name="transaction">The DB transaction.</param>
+    /// <returns>Returns <see cref="Car"/> if found, otherwise null.</returns>
+    public async Task<Car?> GetByMakeModelYearAsync(string make, string model, int year, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
+    {
+        const string sql = """
+            SELECT *
+            FROM Cars
+            WHERE Make = @Make AND Model = @Model AND Year = @Year
+            LIMIT 1
+            """;
+
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+
+        try
+        {
+            var row = await connection.QuerySingleOrDefaultAsync<CarRow>(
+                new CommandDefinition(
+                    sql,
+                    new { Make = make, Model = model, Year = year },
+                    transaction: transaction,
+                    cancellationToken: ct));
+
+            if (row is null)
+            {
+                return null;
+            }
+
+            return Car.Rehydrate(
+                Guid.Parse(row.Id),
+                row.Make,
+                row.Model,
+                row.Year,
+                DateTimeOffset.Parse(row.CreatedAt));
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
     }
 
     /// <summary>
@@ -85,35 +147,42 @@ public class CarRepository : ICarRepository
     /// </summary>
     /// <param name="id">The id of the car.</param>
     /// <param name="ct">The cancellation token.</param>
-    /// <returns>Returns the car if found, otherwise null.</returns>
-    public async Task<Car?> GetCarByIdAsync(Guid id, CancellationToken ct)
+    /// <returns>Returns <see cref="Car"/> if found, otherwise null.</returns>
+    public async Task<Car?> GetCarByIdAsync(Guid id, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
     {
         const string sql = "SELECT * FROM Cars WHERE Id = @Id";
 
-        using var connection = _connectionFactory.CreateConnection();
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
 
-        var row = await connection.QuerySingleOrDefaultAsync<CarRow>(
+        try
+        {
+            var row = await connection.QuerySingleOrDefaultAsync<CarRow>(
             new CommandDefinition(
-                sql, 
-                new { Id = id.ToString() }, 
+                sql,
+                new { Id = id.ToString() },
+                transaction: transaction,
                 cancellationToken: ct));
 
-        if (row is null)
-        {
-            return null;
-        }
+            if (row is null)
+            {
+                return null;
+            }
 
-        return Car.Rehydrate(
-            Guid.Parse(row.Id),
-            Guid.Parse(row.DealerId),
-            row.Make,
-            row.Model,
-            row.Year,
-            row.Colour,
-            row.Price,
-            row.StockLevel,
-            DateTimeOffset.Parse(row.CreatedAt),
-            DateTimeOffset.Parse(row.UpdatedAt));
+            return Car.Rehydrate(
+                Guid.Parse(row.Id),
+                row.Make,
+                row.Model,
+                row.Year,
+                DateTimeOffset.Parse(row.CreatedAt));
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
     }
 
     /// <summary>
@@ -124,48 +193,49 @@ public class CarRepository : ICarRepository
     /// <param name="pageSize">The page size.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="Car"/>.</returns>
-    public async Task<PagedResult<Car>> ListCarsAsync(Guid dealerId, int pageNumber, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<CarWithStockRow>> ListCarsAsync(Guid dealerId, int pageNumber, int pageSize, CancellationToken ct)
     {
         const string countSql = """
             SELECT COUNT(*)
-            FROM Cars
-            WHERE DealerId = @DealerId
+            FROM CarStocks cs
+            INNER JOIN Cars c ON c.Id = cs.CarId
+            WHERE cs.DealerId = @DealerId;
             """;
 
         const string pageSql = """
-            SELECT *
-            FROM Cars
-            WHERE DealerId = @DealerId
-            ORDER BY Make, Model, Year, Colour
+            SELECT
+                c.Id,
+                cs.DealerId,
+                cs.Id AS CarStockId,
+                c.Make,
+                c.Model,
+                c.Year,
+                c.CreatedAt,
+                cs.StockLevel,
+                cs.UnitPrice,
+                cs.UpdatedAt AS StockUpdatedAt
+            FROM CarStocks cs
+            INNER JOIN Cars c ON c.Id = cs.CarId
+            WHERE cs.DealerId = @DealerId
+            ORDER BY c.Make, c.Model, c.Year
             LIMIT @PageSize
-            OFFSET (@PageNumber - 1) * @PageSize
+            OFFSET (@PageNumber - 1) * @PageSize;
             """;
 
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync(ct);
 
         var totalCount = await connection.QuerySingleAsync<int>(
             new CommandDefinition(countSql, new { DealerId = dealerId.ToString() }, cancellationToken: ct));
 
-        var rows = await connection.QueryAsync<CarRow>(
+        var rows = await connection.QueryAsync<CarWithStockRow>(
             new CommandDefinition(
-                pageSql, 
+                pageSql,
                 new { DealerId = dealerId.ToString(), PageNumber = pageNumber, PageSize = pageSize },
                 cancellationToken: ct));
 
-        return new PagedResult<Car>
+        return new PagedResult<CarWithStockRow>
         {
-            Items = rows.Select(row => Car.Rehydrate(
-                Guid.Parse(row.Id),
-                Guid.Parse(row.DealerId),
-                row.Make,
-                row.Model,
-                row.Year,
-                row.Colour,
-                row.Price,
-                row.StockLevel,
-                DateTimeOffset.Parse(row.CreatedAt),
-                DateTimeOffset.Parse(row.UpdatedAt)
-                )).ToList(),
+            Items = rows.ToList(),
             PageNumber = pageNumber,
             PageSize = pageSize,
             TotalCount = totalCount
@@ -178,19 +248,31 @@ public class CarRepository : ICarRepository
     /// <param name="id">The id of the car to remove.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns true if the car was removed, otherwise false.</returns>
-    public async Task<bool> RemoveCarByIdAsync(Guid id, CancellationToken ct)
+    public async Task<bool> RemoveCarByIdAsync(Guid id, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
     {
         const string sql = "DELETE FROM Cars WHERE Id = @Id";
 
-        using var connection = _connectionFactory.CreateConnection();
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+        
+        try
+        {
+            var rowsAffected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new { Id = id.ToString() },
+                    transaction: transaction,
+                    cancellationToken: ct));
 
-        var rowsAffected = await connection.ExecuteAsync(
-            new CommandDefinition(
-                sql, 
-                new { Id = id.ToString() }, 
-                cancellationToken: ct));
-
-        return rowsAffected > 0;
+            return rowsAffected > 0;
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
     }
 
     /// <summary>
@@ -203,55 +285,56 @@ public class CarRepository : ICarRepository
     /// <param name="pageSize">The page size. The number of items to return per page.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns <see cref="PagedResult{T}"/> where T is <see cref="Car"/>.</returns>
-    public async Task<PagedResult<Car>> SearchCarsAsync(Guid dealerId, string? make, string? model, int pageNumber, int pageSize, CancellationToken ct)
+    public async Task<PagedResult<CarWithStockRow>> SearchCarsAsync(Guid dealerId, string? make, string? model, int pageNumber, int pageSize, CancellationToken ct)
     {
         const string countSql = """
             SELECT COUNT(*)
-            FROM Cars
-            WHERE DealerId = @DealerId
-            AND (@Make IS NULL OR LOWER(Make) LIKE '%' || LOWER(@Make) || '%')
-            AND (@Model IS NULL OR LOWER(Model) LIKE '%' || LOWER(@Model) || '%')
+            FROM CarStocks cs
+            INNER JOIN Cars c ON c.Id = cs.CarId
+            WHERE cs.DealerId = @DealerId
+            AND (@Make IS NULL OR LOWER(c.Make) LIKE '%' || LOWER(@Make) || '%')
+            AND (@Model IS NULL OR LOWER(c.Model) LIKE '%' || LOWER(@Model) || '%')
             """;
 
         const string pageSql = """
-            SELECT *
-            FROM Cars
-            WHERE DealerId = @DealerId
-            AND (@Make IS NULL OR LOWER(Make) LIKE '%' || LOWER(@Make) || '%')
-            AND (@Model IS NULL OR Model LIKE '%' || LOWER(@Model) || '%')
-            ORDER BY Make, Model, Year, Colour
+            SELECT
+                c.Id,
+                cs.DealerId,
+                cs.Id AS CarStockId,
+                c.Make,
+                c.Model,
+                c.Year,
+                c.CreatedAt,
+                cs.StockLevel,
+                cs.UnitPrice,
+                cs.UpdatedAt AS StockUpdatedAt
+            FROM CarStocks cs
+            INNER JOIN Cars c ON c.Id = cs.CarId
+            WHERE cs.DealerId = @DealerId
+            AND (@Make IS NULL OR LOWER(c.Make) LIKE '%' || LOWER(@Make) || '%')
+            AND (@Model IS NULL OR LOWER(c.Model) LIKE '%' || LOWER(@Model) || '%')
+            ORDER BY c.Make, c.Model, c.Year
             LIMIT @PageSize
-            OFFSET (@PageNumber - 1) * @PageSize
+            OFFSET (@PageNumber - 1) * @PageSize;
             """;
 
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync(ct);
 
         var totalCount = await connection.QuerySingleAsync<int>(
             new CommandDefinition(
-                countSql, 
+                countSql,
                 new { DealerId = dealerId.ToString(), Make = make, Model = model },
                 cancellationToken: ct));
 
-        var rows = await connection.QueryAsync<CarRow>(
+        var rows = await connection.QueryAsync<CarWithStockRow>(
             new CommandDefinition(
-                pageSql, 
+                pageSql,
                 new { DealerId = dealerId.ToString(), Make = make, Model = model, PageNumber = pageNumber, PageSize = pageSize },
                 cancellationToken: ct));
 
-        return new PagedResult<Car>
+        return new PagedResult<CarWithStockRow>
         {
-            Items = rows.Select(row => Car.Rehydrate(
-                Guid.Parse(row.Id),
-                Guid.Parse(row.DealerId),
-                row.Make,
-                row.Model,
-                row.Year,
-                row.Colour,
-                row.Price,
-                row.StockLevel,
-                DateTimeOffset.Parse(row.CreatedAt),
-                DateTimeOffset.Parse(row.UpdatedAt)
-                )).ToList(),
+            Items = rows.ToList(),
             PageNumber = pageNumber,
             PageSize = pageSize,
             TotalCount = totalCount
@@ -265,23 +348,187 @@ public class CarRepository : ICarRepository
     /// <param name="stockLevel">The new stock level.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>Returns true if the stock level was updated, otherwise false.</returns>
-    public async Task<bool> UpdateCarStockLevelByIdAsync(Guid id, int stockLevel, CancellationToken ct)
+    public async Task<bool> UpdateCarStockLevelAsync(Guid carId, Guid dealerId, int stockLevel, CancellationToken ct)
     {
         const string sql = """
-            UPDATE Cars
+            UPDATE CarStocks
             SET StockLevel = @StockLevel, UpdatedAt = @UpdatedAt
-            WHERE Id = @Id
+            WHERE CarId = @CarId AND DealerId = @DealerId
             """;
 
-        using var connection = _connectionFactory.CreateConnection();
+        using var connection = await _connectionFactory.CreateConnectionAsync(ct);
 
         var rowsAffected = await connection.ExecuteAsync(
             new CommandDefinition(
-                sql, 
-                new { Id = id.ToString(), StockLevel = stockLevel, UpdatedAt = DateTimeOffset.UtcNow.ToString("O") },
+                sql,
+                new 
+                { 
+                    CarId = carId.ToString(), 
+                    DealerId = dealerId.ToString(), 
+                    StockLevel = stockLevel, 
+                    UpdatedAt = DateTimeOffset.UtcNow.ToString("O") 
+                },
                 cancellationToken: ct));
 
         return rowsAffected > 0;
+    }
+
+    /// <summary>
+    /// Create new car stock.
+    /// </summary>
+    /// <param name="carStock">The car stock entity <see cref="CarStock"/>.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <param name="connection">The DB connection.</param>
+    /// <param name="transaction">The DB transaction.</param>
+    /// <returns>Returns true if the car stock was created, otherwise false.</returns>
+    public async Task<bool> AddCarStockAsync(CarStock carStock, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
+    {
+        const string sql = """
+            INSERT INTO CarStocks (Id, DealerId, CarId, StockLevel, UnitPrice, UpdatedAt)
+            VALUES (@Id, @DealerId, @CarId, @StockLevel, @UnitPrice, @UpdatedAt)
+            """;
+
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+
+        try
+        {
+            var rowsAffected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        Id = carStock.Id.ToString(),
+                        DealerId = carStock.DealerId.ToString(),
+                        CarId = carStock.CarId.ToString(),
+                        StockLevel = carStock.StockLevel,
+                        UnitPrice = carStock.UnitPrice,
+                        UpdatedAt = DateTimeOffset.UtcNow.ToString("O")
+                    },
+                    transaction: transaction,
+                    cancellationToken: ct));
+
+            return rowsAffected > 0;
+        }
+        finally 
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Check if the car stock exists by given the dealer id and car id.
+    /// </summary>
+    /// <param name="dealerId">The id of the dealer.</param>
+    /// <param name="carId">The id of the car.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns true if the car stock exists, otherwise false.</returns>
+    public async Task<bool> ExistsAsync(Guid dealerId, Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
+    {
+        const string sql = "SELECT 1 FROM CarStocks WHERE DealerId = @DealerId AND CarId = @CarId LIMIT 1";
+
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+
+        try
+        {
+            var exists = await connection.QuerySingleOrDefaultAsync<int?>(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        DealerId = dealerId.ToString(),
+                        CarId = carId.ToString()
+                    },
+                    transaction: transaction,
+                    cancellationToken: ct));
+
+            return exists.HasValue;
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Check if there is no stock left for this car for all dealers.
+    /// </summary>
+    /// <param name="carId">The id of the car.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns true if there is no stock left for all dealers, otherwise false.</returns>
+    public async Task<bool> ExistsAsync(Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
+    {
+        const string sql = "SELECT 1 FROM CarStocks WHERE CarId = @CarId LIMIT 1";
+
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+
+        try
+        {
+            var exists = await connection.QuerySingleOrDefaultAsync<int?>(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        CarId = carId.ToString()
+                    },
+                    transaction: transaction,
+                    cancellationToken: ct));
+
+            return exists.HasValue;
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Remove car stock.
+    /// </summary>
+    /// <param name="dealerId">The id of the dealer.</param>
+    /// <param name="carId">The id of the car.</param>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>Returns true if the car stock was removed, otherwise false.</returns>
+    public async Task<bool> RemoveCarStockAsync(Guid dealerId, Guid carId, CancellationToken ct, IDbConnection? connection = null, IDbTransaction? transaction = null)
+    {
+        const string sql = "DELETE FROM CarStocks WHERE DealerId = @DealerId AND CarId = @CarId";
+
+        var shouldDisposeConnection = connection is null;
+        connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+
+        try
+        {
+            var rowsAffected = await connection.ExecuteAsync(
+                new CommandDefinition(
+                    sql,
+                    new
+                    {
+                        DealerId = dealerId.ToString(),
+                        CarId = carId.ToString()
+                    },
+                    transaction: transaction,
+                    cancellationToken: ct));
+
+            return rowsAffected > 0;
+        }
+        finally
+        {
+            if (shouldDisposeConnection)
+            {
+                connection.Dispose();
+            }
+        }
     }
 
     /// <summary>
@@ -299,5 +546,44 @@ public class CarRepository : ICarRepository
         public int StockLevel { get; set; }
         public string CreatedAt { get; set; } = null!;
         public string UpdatedAt { get; set; } = null!;
+    }
+
+    /// <summary>
+    /// Car with stock row. Returns by the SQL query.
+    /// </summary>
+    public sealed class CarWithStockRow
+    {
+        public string Id { get; set; } = null!;
+        public string DealerId { get; set; } = null!;
+        public string CarStockId { get; set; } = null!;
+        public string Make { get; set; } = null!;
+        public string Model { get; set; } = null!;
+        public int Year { get; set; }
+        public decimal UnitPrice { get; set; }
+        public int StockLevel { get; set; }
+        public string CreatedAt { get; set; } = null!;
+        public string StockUpdatedAt { get; set; } = null!;
+
+        /// <summary>
+        /// Map <see cref="CarWithStockRow"/> to <see cref="CarResponse"/>.
+        /// </summary>
+        /// <param name="row"></param>
+        /// <returns></returns>
+        public static CarResponse Map(CarWithStockRow row)
+        {
+            return new CarResponse
+            {
+                Id = Guid.Parse(row.Id),
+                DealerId = Guid.Parse(row.DealerId),
+                CarStockId = Guid.Parse(row.CarStockId),
+                Make = row.Make,
+                Model = row.Model,
+                Year = row.Year,
+                UnitPrice = row.UnitPrice,
+                StockLevel = row.StockLevel,
+                CreatedAt = DateTimeOffset.Parse(row.CreatedAt),
+                StockUpdatedAt = DateTimeOffset.Parse(row.StockUpdatedAt)
+            };
+        }
     }
 }

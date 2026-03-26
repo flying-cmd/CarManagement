@@ -1,0 +1,54 @@
+﻿namespace CarManagement.Common.Helpers;
+
+public sealed class CarResponse
+{
+    /// <summary>
+    /// The id of the car.
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// The id of the dealer who owns the car.
+    /// </summary>
+    public Guid DealerId { get; set; }
+
+    /// <summary>
+    /// The id of the car stock.
+    /// </summary>
+    public Guid CarStockId { get; set; }
+
+    /// <summary>
+    /// The make of the car.
+    /// </summary>
+    public string Make { get; set; } = null!;
+
+    /// <summary>
+    /// The model of the car.
+    /// </summary>
+    public string Model { get; set; } = null!;
+
+    /// <summary>
+    /// The year of the car.
+    /// </summary>
+    public int Year { get; set; }
+
+    /// <summary>
+    /// The price of the car.
+    /// </summary>
+    public decimal UnitPrice { get; set; }
+
+    /// <summary>
+    /// The stock level of the car.
+    /// </summary>
+    public int StockLevel { get; set; }
+
+    /// <summary>
+    /// The time the car was created.
+    /// </summary>
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
+    /// The time the car was last updated.
+    /// </summary>
+    public DateTimeOffset StockUpdatedAt { get; set; }
+}
