@@ -25,6 +25,7 @@ All car management endpoints are protected. A dealer can only manage cars that b
 - FastEndpoints.Swagger
 - SQLite
 - Dapper
+- Serilog
 - xUnit
 - FluentAssertions
 - Moq
@@ -146,6 +147,20 @@ Important notes:
 - `Jwt:SigningKey` must not be empty
 - `Jwt:DurationInMinutes` must be greater than `0`
 - For development environment, you can store the `Jwt:SigningKey` and `Jwt:DurationInMinutes` in `appsettings.Development.json`. However, for production environment, please store them securely in a secret management service, such as Azure Key Vault or AWS Secrets Manager, instead of hardcoding them in configuration files.
+
+## Logging Configuration
+
+This project uses Serilog for structured application logging.
+
+Current Serilog setup:
+
+- configuration is read from `appsettings.json` and environment-specific configuration files
+- logs are written to the console and to rolling file logs
+- file logs are written to `CarManagement.API/logs/log-.txt` with a daily rolling interval and a retention limit of `7` files
+- log events are enriched with contextual properties such as application name, version, environment, machine name, and thread id
+- application startup is logged explicitly, and the rest of the application continues to use `ILogger<T>` in services and middleware
+
+When running locally, the `logs` folder is created under the application's working directory (`CarManagement.API`).
 
 ## Running the API
 
