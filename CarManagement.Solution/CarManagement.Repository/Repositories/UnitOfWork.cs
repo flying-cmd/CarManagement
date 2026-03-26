@@ -6,7 +6,7 @@ using System.Data.Common;
 
 namespace CarManagement.Repository.Repositories;
 
-public class UnitOfWork : IUnitOfWork
+public class UnitOfWork : IUnitOfWork, IDisposable
 {
     private readonly SqliteConnectionFactory _connectionFactory;
     private DbConnection? _connection;
@@ -85,5 +85,17 @@ public class UnitOfWork : IUnitOfWork
             await _connection.DisposeAsync();
             _connection = null;
         }
+    }
+
+    /// <summary>
+    /// Closes the connection and transaction synchronously.
+    /// </summary>
+    public void Dispose()
+    {
+        _transaction?.Dispose();
+        _transaction = null;
+
+        _connection?.Dispose();
+        _connection = null;
     }
 }
