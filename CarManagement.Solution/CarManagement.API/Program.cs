@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Identity;
 
 var builder = WebApplication.CreateBuilder();
 
+// Serilog
+builder.AddLogging();
+
 // Sqlite
 builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("Database"));
 builder.Services.AddSingleton<SqliteConnectionFactory>();
@@ -50,6 +53,9 @@ builder.Services.AddFastEndpoints();
 builder.Services.AddAppSwagger();
 
 var app = builder.Build();
+
+// Log application startup
+app.LogApplicationStartup();
 
 // Global exception handler
 app.UseMiddleware<GlobalExceptionHandler>();
