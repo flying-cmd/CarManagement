@@ -280,6 +280,8 @@ This solution includes:
 - API integration tests in [`CarManagement.IntegrationTests/Api`](./CarManagement.Solution/CarManagement.IntegrationTests/Api)
 - repository integration tests in [`CarManagement.IntegrationTests/Repositories`](./CarManagement.Solution/CarManagement.IntegrationTests/Repositories)
 
+Do not run the API program while running the tests, because the running process can lock the build outputs and cause test execution or rebuild failures.
+
 ### Run All Tests
 
 From `CarManagement.Solution`:
